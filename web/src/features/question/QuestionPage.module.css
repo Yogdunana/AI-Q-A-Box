@@ -2,7 +2,7 @@
   min-height: 100%;
 }
 
-@media (min-width: 768px) {
+@media (min-width: 1024px) and (not (pointer: coarse)) {
   .page > article > div:first-child {
     border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   }

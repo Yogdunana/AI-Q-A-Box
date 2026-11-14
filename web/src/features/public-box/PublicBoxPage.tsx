@@ -62,8 +62,8 @@ export function PublicBoxPage() {
             />
           )
         ) : box ? (
-          <m.div variants={stagger(0.06)} initial="initial" animate="animate">
-            <m.div variants={fadeUp}>
+          <m.div className={styles.content} variants={stagger(0.06)} initial="initial" animate="animate">
+            <m.div variants={fadeUp} className={styles.identityBlock}>
               <BoxIdentity
                 ownerName={box.owner.display_name}
                 avatarUrl={box.owner.avatar_url}
@@ -76,7 +76,7 @@ export function PublicBoxPage() {
               {box.accepting ? <Composer box={box} /> : <PausedNotice name={box.owner.display_name} />}
             </m.div>
             {features.publicAnswers && (
-              <m.div variants={fadeUp}>
+              <m.div variants={fadeUp} className={styles.answersBlock}>
                 <PublicAnswers slug={box.slug} ownerName={box.owner.display_name} />
               </m.div>
             )}

@@ -21,17 +21,27 @@ export const spring = {
   gentle: { type: "spring", stiffness: 340, damping: 34, mass: 1 },
 } satisfies Record<string, Transition>;
 
-export const page: Variants = {
-  initial: { opacity: 0, y: 6 },
-  animate: {
+export type PageTransition = "page" | "push" | "pop" | "fade";
+
+/**
+ * Route transitions, resolved per navigation via AnimatePresence `custom` so the
+ * outgoing page exits in the direction of the incoming one. Push / pop mirror
+ * hierarchical navigation on touch devices; tab switches only cross-fade.
+ */
+export const routeVariants: Variants = {
+  initial: (t: PageTransition) =>
+    t === "push" ? { opacity: 0, x: 28 } : t === "pop" ? { opacity: 0, x: -28 } : t === "fade" ? { opacity: 0 } : { opacity: 0, y: 6 },
+  animate: (t: PageTransition) => ({
     opacity: 1,
+    x: 0,
     y: 0,
-    transition: { duration: duration.base, ease: ease.out },
-  },
-  exit: {
+    transition: { duration: t === "fade" ? duration.fast : t === "page" ? duration.base : 0.26, ease: ease.out },
+  }),
+  exit: (t: PageTransition) => ({
     opacity: 0,
-    transition: { duration: duration.instant, ease: ease.in },
-  },
+    x: t === "push" ? -12 : t === "pop" ? 12 : 0,
+    transition: { duration: t === "push" || t === "pop" ? 0.14 : duration.instant, ease: ease.in },
+  }),
 };
 
 export const fadeUp: Variants = {

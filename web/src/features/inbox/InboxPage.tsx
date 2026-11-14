@@ -22,7 +22,7 @@ import { EmptyState, Kbd, Skeleton, StatusBadge } from "../../components/ui/Disp
 import { Input } from "../../components/ui/Field";
 import { Menu, MenuItem } from "../../components/ui/Menu";
 import { boxUrl, relativeTime } from "../../lib/format";
-import { useBreakpoint, useCopy, useDebouncedValue, isTypingTarget } from "../../lib/hooks";
+import { isTypingTarget, useCopy, useDebouncedValue, useLayout } from "../../lib/hooks";
 import { duration, ease, spring } from "../../lib/motion";
 import { useQuery } from "../../lib/query";
 import { countFor, INBOX_VIEW_BY_ID, INBOX_VIEWS, isInboxView, type InboxView, type InboxViewMeta } from "../../lib/status";
@@ -34,7 +34,7 @@ import styles from "./InboxPage.module.css";
 export function InboxPage() {
   const [params, setParams] = useSearchParams();
   const navigate = useNavigate();
-  const { lg, xl } = useBreakpoint();
+  const { split: lg, threePane: xl, desktop } = useLayout();
   const viewParam = params.get("view");
   const view: InboxView = isInboxView(viewParam) ? viewParam : "pending";
   const meta = INBOX_VIEW_BY_ID[view];
@@ -164,7 +164,7 @@ export function InboxPage() {
                   <IconButton size="sm" label="清除搜索" onClick={() => setSearch("")}>
                     <X />
                   </IconButton>
-                ) : lg ? (
+                ) : desktop ? (
                   <span className={styles.searchKbd}>
                     <Kbd>/</Kbd>
                   </span>
@@ -241,9 +241,13 @@ export function InboxPage() {
                   title={items.length ? "选择一个问题开始处理" : "这里暂时没有需要处理的"}
                   body={
                     items.length ? (
-                      <span className={styles.kbdHint}>
-                        用 <Kbd>J</Kbd> <Kbd>K</Kbd> 上下切换问题
-                      </span>
+                      desktop ? (
+                        <span className={styles.kbdHint}>
+                          用 <Kbd>J</Kbd> <Kbd>K</Kbd> 上下切换问题
+                        </span>
+                      ) : (
+                        "点按左侧列表中的问题查看详情。"
+                      )
                     ) : (
                       "切换左侧的分类，看看其他问题。"
                     )

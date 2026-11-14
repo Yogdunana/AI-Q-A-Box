@@ -4,7 +4,6 @@ import {
   AlertCircle,
   Archive,
   ArchiveRestore,
-  ArrowLeft,
   Ban,
   Flag,
   Inbox,
@@ -16,6 +15,7 @@ import {
   VenetianMask,
 } from "lucide-react";
 import { isApiError, messageFor, type QuestionDetail as Detail } from "../../api";
+import { BackButton } from "../../components/ui/BackButton";
 import { Button, IconButton } from "../../components/ui/Button";
 import { ConfirmDialog } from "../../components/ui/Dialog";
 import { EmptyState, Skeleton, StatusBadge } from "../../components/ui/Display";
@@ -31,14 +31,15 @@ interface QuestionDetailProps {
   id: string;
   variant: "pane" | "page";
   onBack?(): void;
+  backLabel?: string;
   /** Called after the question leaves the current list (archived, spam, deleted). */
   onRemoved?(): void;
 }
 
-export function QuestionDetail({ id, variant, onBack, onRemoved }: QuestionDetailProps) {
+export function QuestionDetail({ id, variant, onBack, backLabel = "收件箱", onRemoved }: QuestionDetailProps) {
   const { data, error, loading, refetch } = useQuestionDetail(id);
 
-  if (loading) return <DetailSkeleton variant={variant} onBack={onBack} />;
+  if (loading) return <DetailSkeleton variant={variant} onBack={onBack} backLabel={backLabel} />;
   if (error || !data) {
     return (
       <div className={styles.state}>
@@ -50,7 +51,7 @@ export function QuestionDetail({ id, variant, onBack, onRemoved }: QuestionDetai
             actions={
               onBack && (
                 <Button variant="secondary" onClick={onBack}>
-                  返回收件箱
+                  返回{backLabel}
                 </Button>
               )
             }
@@ -71,10 +72,10 @@ export function QuestionDetail({ id, variant, onBack, onRemoved }: QuestionDetai
       </div>
     );
   }
-  return <DetailView detail={data} variant={variant} onBack={onBack} onRemoved={onRemoved} />;
+  return <DetailView detail={data} variant={variant} onBack={onBack} backLabel={backLabel} onRemoved={onRemoved} />;
 }
 
-function DetailView({ detail, variant, onBack, onRemoved }: { detail: Detail } & Omit<QuestionDetailProps, "id">) {
+function DetailView({ detail, variant, onBack, backLabel = "收件箱", onRemoved }: { detail: Detail } & Omit<QuestionDetailProps, "id">) {
   const { question } = detail;
   const { setStatus, restore, remove } = useQuestionActions();
   const composerRef = useRef<AnswerComposerHandle>(null);
@@ -119,11 +120,7 @@ function DetailView({ detail, variant, onBack, onRemoved }: { detail: Detail } &
   return (
     <article className={styles.detail} data-variant={variant} aria-label="问题详情">
       <div className={styles.toolbar}>
-        {onBack && (
-          <IconButton label="返回收件箱" onClick={onBack} className={styles.back}>
-            <ArrowLeft />
-          </IconButton>
-        )}
+        {onBack && <BackButton label={backLabel} onClick={onBack} />}
         <StatusBadge status={status} />
         <div className={styles.toolbarActions}>
           {!spam && (
@@ -259,15 +256,11 @@ function Timeline({ detail }: { detail: Detail }) {
   );
 }
 
-function DetailSkeleton({ variant, onBack }: { variant: "pane" | "page"; onBack?(): void }) {
+function DetailSkeleton({ variant, onBack, backLabel }: { variant: "pane" | "page"; onBack?(): void; backLabel: string }) {
   return (
     <div className={styles.detail} data-variant={variant} aria-busy="true" aria-label="加载中">
       <div className={styles.toolbar}>
-        {onBack && (
-          <IconButton label="返回收件箱" onClick={onBack} className={styles.back}>
-            <ArrowLeft />
-          </IconButton>
-        )}
+        {onBack && <BackButton label={backLabel} onClick={onBack} />}
         <Skeleton width={64} height={22} radius={11} />
       </div>
       <div className={styles.scroll}>

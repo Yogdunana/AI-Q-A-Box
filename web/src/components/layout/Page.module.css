@@ -106,3 +106,14 @@
     padding: var(--space-6);
   }
 }
+
+/* Short landscape screens: reclaim vertical space */
+@media (max-height: 480px) {
+  .page {
+    padding-top: var(--space-5);
+  }
+
+  .header {
+    margin-bottom: var(--space-5);
+  }
+}

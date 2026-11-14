@@ -8,14 +8,16 @@
 .header {
   display: flex;
   align-items: center;
-  height: 64px;
-  padding: 0 var(--space-5);
+  height: calc(64px + env(safe-area-inset-top));
+  padding: env(safe-area-inset-top) max(var(--space-5), env(safe-area-inset-right)) 0
+    max(var(--space-5), env(safe-area-inset-left));
 }
 
 @media (min-width: 768px) {
   .header {
-    height: 72px;
-    padding: 0 var(--space-8);
+    height: calc(72px + env(safe-area-inset-top));
+    padding: env(safe-area-inset-top) max(var(--space-8), env(safe-area-inset-right)) 0
+      max(var(--space-8), env(safe-area-inset-left));
   }
 }
 

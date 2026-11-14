@@ -8,8 +8,9 @@
 .topbar {
   display: flex;
   align-items: center;
-  height: 56px;
-  padding: 0 var(--space-5);
+  height: calc(56px + env(safe-area-inset-top));
+  padding: env(safe-area-inset-top) max(var(--space-5), env(safe-area-inset-right)) 0
+    max(var(--space-5), env(safe-area-inset-left));
 }
 
 @media (min-width: 768px) {
@@ -24,7 +25,8 @@
   width: 100%;
   max-width: 640px;
   margin: 0 auto;
-  padding: var(--space-6) var(--space-5) var(--space-12);
+  padding: var(--space-6) max(var(--space-5), env(safe-area-inset-right)) var(--space-12)
+    max(var(--space-5), env(safe-area-inset-left));
 }
 
 @media (min-width: 768px) {
@@ -277,3 +279,106 @@
 .footerLink:hover {
   color: var(--ink-1);
 }
+
+/*
+ * Wide but short screens (phones in landscape, iPhone Duo open in landscape):
+ * identity and public answers on the left, the composer pinned on the right so
+ * it never scrolls out of reach.
+ */
+@media (min-width: 840px) and (max-height: 640px) {
+  .main {
+    max-width: 1080px;
+    padding-top: var(--space-6);
+  }
+
+  .content {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+    grid-template-areas:
+      "identity composer"
+      "answers composer";
+    align-items: start;
+    column-gap: var(--space-10);
+  }
+
+  .identityBlock {
+    grid-area: identity;
+  }
+
+  .composerWrap {
+    grid-area: composer;
+    position: sticky;
+    top: var(--space-4);
+    margin-top: 0;
+  }
+
+  .answersBlock {
+    grid-area: answers;
+  }
+
+  .answersBlock > section {
+    margin-top: var(--space-10);
+  }
+}
+
+/* Book posture: same arrangement, with each column sized to its side of the fold */
+@media (horizontal-viewport-segments: 2) {
+  .main {
+    max-width: none;
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  .content {
+    display: grid;
+    grid-template-columns: env(viewport-segment-width 0 0) env(viewport-segment-width 1 0);
+    column-gap: calc(env(viewport-segment-left 1 0) - env(viewport-segment-right 0 0));
+    grid-template-areas:
+      "identity composer"
+      "answers composer";
+    align-items: start;
+  }
+
+  .identityBlock,
+  .answersBlock,
+  .composerWrap {
+    padding: 0 var(--space-6);
+  }
+
+  .identityBlock {
+    grid-area: identity;
+  }
+
+  .composerWrap {
+    grid-area: composer;
+    position: sticky;
+    top: var(--space-4);
+    margin-top: 0;
+  }
+
+  .answersBlock {
+    grid-area: answers;
+  }
+}
+
+/* Laptop posture (fold across the middle): identity above the fold, composer below it */
+@media (vertical-viewport-segments: 2) {
+  .main {
+    padding-top: 0;
+  }
+
+  .content {
+    display: grid;
+    grid-template-rows: calc(env(viewport-segment-bottom 0 0) - 56px - env(safe-area-inset-top)) auto;
+    row-gap: calc(env(viewport-segment-top 0 1) - env(viewport-segment-bottom 0 0));
+  }
+
+  .identityBlock {
+    align-self: center;
+  }
+
+  .composerWrap {
+    margin-top: 0;
+  }
+}
+

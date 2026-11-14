@@ -1,0 +1,44 @@
+.back {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: 36px;
+  min-width: 0;
+  padding: 0 var(--space-2) 0 var(--space-1);
+  border-radius: var(--radius-sm);
+  color: var(--accent-ink);
+  font-size: var(--text-base);
+  font-weight: var(--weight-medium);
+  transition:
+    background-color var(--dur-fast) var(--ease-out),
+    opacity var(--dur-fast) var(--ease-out);
+}
+
+.back svg {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  stroke-width: 2;
+}
+
+.label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.back:active {
+  opacity: 0.6;
+}
+
+@media (hover: hover) {
+  .back:hover {
+    background: var(--surface-hover);
+  }
+}
+
+@media (pointer: coarse) {
+  .back {
+    height: 44px;
+  }
+}

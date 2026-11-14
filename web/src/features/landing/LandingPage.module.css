@@ -17,7 +17,8 @@
   width: 100%;
   max-width: 1160px;
   margin: 0 auto;
-  padding: var(--space-16) var(--space-5) var(--space-10);
+  padding: var(--space-16) max(var(--space-5), env(safe-area-inset-right)) var(--space-10)
+    max(var(--space-5), env(safe-area-inset-left));
 }
 
 @media (min-width: 768px) {
@@ -27,10 +28,18 @@
   }
 }
 
-@media (min-width: 1024px) {
+/* Side by side once there is room: landscape phones, open foldables, tablets, desktop */
+@media (min-width: 840px) {
   .main {
     grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
     align-items: center;
+    gap: var(--space-12);
+    padding: var(--space-16) var(--space-10);
+  }
+}
+
+@media (min-width: 1200px) {
+  .main {
     gap: var(--space-16);
     padding: var(--space-16) var(--space-12);
   }
@@ -99,7 +108,7 @@
   justify-self: center;
 }
 
-@media (min-width: 1024px) {
+@media (min-width: 840px) {
   .visual {
     justify-self: end;
   }
@@ -116,4 +125,49 @@
 .copyright {
   font-size: var(--text-xs);
   color: var(--ink-3);
+}
+
+/* Short landscape screens: tighten vertical rhythm so the call to action stays in view */
+@media (max-height: 480px) and (min-width: 560px) {
+  .main {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 0.9fr);
+    align-items: center;
+    gap: var(--space-8);
+    padding: var(--space-8) var(--space-8) var(--space-4);
+  }
+
+  .title {
+    font-size: clamp(2rem, 1rem + 4vh, 2.75rem);
+  }
+
+  .lede {
+    margin-top: var(--space-3);
+    font-size: var(--text-base);
+  }
+
+  .actions {
+    margin-top: var(--space-5);
+    flex-direction: row;
+  }
+
+  .footer {
+    padding-top: var(--space-4);
+  }
+}
+
+/* Book posture: copy on one side of the fold, the product vignette on the other */
+@media (horizontal-viewport-segments: 2) {
+  .main {
+    grid-template-columns: env(viewport-segment-width 0 0) env(viewport-segment-width 1 0);
+    column-gap: calc(env(viewport-segment-left 1 0) - env(viewport-segment-right 0 0));
+    max-width: none;
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  .hero,
+  .visual {
+    padding: 0 var(--space-8);
+    justify-self: center;
+  }
 }

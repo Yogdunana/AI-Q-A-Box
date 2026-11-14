@@ -7,10 +7,11 @@ export function QuestionPage() {
   const navigate = useNavigate();
   const from = (useLocation().state as { from?: string } | null)?.from;
   const back = () => navigate(from ?? "/app/inbox");
+  const backLabel = from === "/app" ? "概览" : "收件箱";
 
   return (
     <div className={styles.page}>
-      <QuestionDetail key={id} id={id} variant="page" onBack={back} onRemoved={back} />
+      <QuestionDetail key={id} id={id} variant="page" onBack={back} backLabel={backLabel} onRemoved={back} />
     </div>
   );
 }

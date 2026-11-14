@@ -29,17 +29,10 @@
 }
 
 .detail[data-variant="page"] .toolbar {
-  padding-left: var(--space-2);
-}
-
-@media (max-width: 767px) {
-  .detail[data-variant="page"] .toolbar {
-    top: var(--topbar-height);
-  }
-}
-
-.back {
-  margin-right: var(--space-1);
+  top: var(--chrome-top);
+  padding-top: max(var(--space-2), env(safe-area-inset-top));
+  padding-left: max(var(--space-2), env(safe-area-inset-left));
+  padding-right: max(var(--space-3), env(safe-area-inset-right));
 }
 
 .toolbarActions {

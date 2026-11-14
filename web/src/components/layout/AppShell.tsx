@@ -1,6 +1,6 @@
-import { useEffect, type ComponentType } from "react";
+import { useEffect, useState, type ComponentType } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router";
-import { LayoutGroup, m } from "motion/react";
+import { AnimatePresence, LayoutGroup, m } from "motion/react";
 import {
   Check,
   Copy,
@@ -13,10 +13,11 @@ import {
   type LucideProps,
 } from "lucide-react";
 import { api } from "../../api";
+import { effectiveLevel, useRouteMeta } from "../../app/routeMeta";
 import { useInboxCounts } from "../../features/owner/useInboxCounts";
 import { boxUrl, displayHost } from "../../lib/format";
-import { useCopy } from "../../lib/hooks";
-import { spring } from "../../lib/motion";
+import { useCopy, useLayout } from "../../lib/hooks";
+import { duration, ease, spring, type PageTransition } from "../../lib/motion";
 import { useOwner, useSession } from "../../state/session";
 import { useToast } from "../../state/toast";
 import { BrandName } from "../brand/Brand";
@@ -30,50 +31,64 @@ interface NavItem {
   to: string;
   label: string;
   icon: ComponentType<LucideProps>;
-  end?: boolean;
-  match?: (pathname: string) => boolean;
+  match: (pathname: string) => boolean;
 }
 
 const NAV: NavItem[] = [
-  { to: "/app", label: "概览", icon: LayoutDashboard, end: true },
+  { to: "/app", label: "概览", icon: LayoutDashboard, match: (p) => p === "/app" },
   {
     to: "/app/inbox",
     label: "收件箱",
     icon: Inbox,
     match: (p) => p.startsWith("/app/inbox") || p.startsWith("/app/questions"),
   },
-  { to: "/app/share", label: "分享", icon: Send },
-  { to: "/app/settings", label: "设置", icon: Settings2 },
+  { to: "/app/share", label: "分享", icon: Send, match: (p) => p.startsWith("/app/share") },
+  { to: "/app/settings", label: "设置", icon: Settings2, match: (p) => p.startsWith("/app/settings") },
 ];
 
-function isActive(item: NavItem, pathname: string) {
-  if (item.match) return item.match(pathname);
-  return item.end ? pathname === item.to : pathname.startsWith(item.to);
+/** Infer the transition from how the navigation level changed. */
+function usePageTransition(level: 1 | 2, desktop: boolean): PageTransition {
+  const { pathname } = useLocation();
+  const [previous, setPrevious] = useState({ pathname, level, transition: "page" as PageTransition });
+  if (previous.pathname !== pathname) {
+    const transition: PageTransition = desktop
+      ? "page"
+      : level > previous.level
+        ? "push"
+        : level < previous.level
+          ? "pop"
+          : "fade";
+    setPrevious({ pathname, level, transition });
+    return transition;
+  }
+  return previous.transition;
 }
 
 export function AppShell() {
   const { pathname } = useLocation();
   const { counts } = useInboxCounts();
   const newCount = counts.submitted ?? 0;
+  const layout = useLayout();
+  const meta = useRouteMeta();
+  const level = effectiveLevel(meta, layout.split);
+  const transition = usePageTransition(level, layout.desktop);
 
-  useEffect(() => {
-    document.body.dataset.hasTabbar = "";
-    return () => {
-      delete document.body.dataset.hasTabbar;
-    };
-  }, []);
+  // Settings sections share one key when shown side by side so only the form area swaps.
+  const keyFor = (path: string) => (layout.split && path.startsWith("/app/settings") ? "/app/settings" : path);
 
   return (
-    <div className={styles.shell}>
+    <div className={styles.shell} data-app-shell="" data-level={level}>
       <a href="#main" className="skip-link">
         跳到主要内容
       </a>
       <Sidebar pathname={pathname} newCount={newCount} />
-      <MobileTopBar />
+      {level === 1 && <TouchTopBar title={meta.title} />}
       <main id="main" className={styles.main} tabIndex={-1}>
-        <AnimatedOutlet className={styles.page} />
+        <AnimatedOutlet className={styles.page} keyFor={keyFor} transition={transition} />
       </main>
-      <TabBar pathname={pathname} newCount={newCount} />
+      <AnimatePresence initial={false}>
+        {level === 1 && <TabBar key="tabbar" pathname={pathname} newCount={newCount} />}
+      </AnimatePresence>
     </div>
   );
 }
@@ -81,26 +96,25 @@ export function AppShell() {
 function Sidebar({ pathname, newCount }: { pathname: string; newCount: number }) {
   const { box } = useOwner();
   return (
-    <aside className={styles.sidebar} aria-label="主导航">
+    <aside className={styles.sidebar} aria-label="主导航" data-testid="nav-sidebar" data-mode="sidebar">
       <div className={styles.sidebarTop}>
-        <BrandName to="/app" className={styles.sidebarBrand} />
+        <BrandName to="/app" />
       </div>
       <LayoutGroup id="sidebar-nav">
         <nav>
           <ul className={styles.navList}>
             {NAV.map((item) => {
-              const active = isActive(item, pathname);
+              const active = item.match(pathname);
               const Icon = item.icon;
               const badge = item.to === "/app/inbox" && newCount > 0 ? newCount : null;
               return (
                 <li key={item.to}>
                   <NavLink
                     to={item.to}
-                    end={item.end}
+                    end={item.to === "/app"}
                     className={styles.navItem}
                     data-active={active || undefined}
                     aria-current={active ? "page" : undefined}
-                    title={item.label}
                   >
                     {active && <m.span layoutId="nav-active" className={styles.navActive} transition={spring.snappy} />}
                     <Icon className={styles.navIcon} aria-hidden="true" />
@@ -154,7 +168,14 @@ function BoxLinkCard({ slug }: { slug: string }) {
         >
           {copied ? <Check /> : <Copy />}
         </IconButton>
-        <a className={styles.linkOpen} href={`/${slug}`} target="_blank" rel="noreferrer" aria-label="在新标签页打开公开页" title="打开公开页">
+        <a
+          className={styles.linkOpen}
+          href={`/${slug}`}
+          target="_blank"
+          rel="noreferrer"
+          aria-label="在新标签页打开公开页"
+          title="打开公开页"
+        >
           <ExternalLink aria-hidden="true" />
         </a>
       </div>
@@ -211,10 +232,45 @@ function UserMenu({ placement, compact }: { placement: "top" | "bottom"; compact
   );
 }
 
-function MobileTopBar() {
+/** Touch top bar: shows the brand at rest and the page title once the page header scrolls away. */
+function TouchTopBar({ title }: { title?: string }) {
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 48);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
   return (
-    <header className={styles.topbar}>
-      <BrandName to="/app" />
+    <header className={styles.topbar} data-scrolled={scrolled || undefined}>
+      <div className={styles.topbarTitle}>
+        <AnimatePresence mode="wait" initial={false}>
+          {scrolled && title ? (
+            <m.span
+              key="title"
+              className={styles.topbarPageTitle}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: duration.fast, ease: ease.out }}
+            >
+              {title}
+            </m.span>
+          ) : (
+            <m.span
+              key="brand"
+              initial={{ opacity: 0, y: -4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 6 }}
+              transition={{ duration: duration.fast, ease: ease.out }}
+            >
+              <BrandName to="/app" />
+            </m.span>
+          )}
+        </AnimatePresence>
+      </div>
       <UserMenu placement="bottom" compact />
     </header>
   );
@@ -222,31 +278,38 @@ function MobileTopBar() {
 
 function TabBar({ pathname, newCount }: { pathname: string; newCount: number }) {
   return (
-    <LayoutGroup id="tab-nav">
-      <nav className={styles.tabbar} aria-label="主导航">
-        {NAV.map((item) => {
-          const active = isActive(item, pathname);
-          const Icon = item.icon;
-          const badge = item.to === "/app/inbox" && newCount > 0;
-          return (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.end}
-              className={styles.tab}
-              data-active={active || undefined}
-              aria-current={active ? "page" : undefined}
-            >
-              {active && <m.span layoutId="tab-active" className={styles.tabActive} transition={spring.snappy} />}
-              <span className={styles.tabIconWrap}>
-                <Icon className={styles.tabIcon} aria-hidden="true" />
-                {badge && <span className={styles.tabDot} aria-label={`${newCount} 个新问题`} />}
-              </span>
-              <span className={styles.tabLabel}>{item.label}</span>
-            </NavLink>
-          );
-        })}
-      </nav>
-    </LayoutGroup>
+    <m.div
+      className={styles.tabbarWrap}
+      initial={{ y: "120%" }}
+      animate={{ y: 0, transition: { duration: duration.base, ease: ease.out } }}
+      exit={{ y: "120%", transition: { duration: duration.fast, ease: ease.in } }}
+    >
+      <LayoutGroup id="tab-nav">
+        <nav className={styles.tabbar} aria-label="主导航" data-testid="nav-tabbar">
+          {NAV.map((item) => {
+            const active = item.match(pathname);
+            const Icon = item.icon;
+            const badge = item.to === "/app/inbox" && newCount > 0;
+            return (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                end={item.to === "/app"}
+                className={styles.tab}
+                data-active={active || undefined}
+                aria-current={active ? "page" : undefined}
+              >
+                {active && <m.span layoutId="tab-active" className={styles.tabActive} transition={spring.snappy} />}
+                <span className={styles.tabIconWrap}>
+                  <Icon className={styles.tabIcon} aria-hidden="true" />
+                  {badge && <span className={styles.tabDot} aria-label={`${newCount} 个新问题`} />}
+                </span>
+                <span className={styles.tabLabel}>{item.label}</span>
+              </NavLink>
+            );
+          })}
+        </nav>
+      </LayoutGroup>
+    </m.div>
   );
 }

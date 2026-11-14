@@ -16,13 +16,23 @@ export function useMediaQuery(query: string): boolean {
   );
 }
 
-export const BREAKPOINTS = { sm: 640, md: 768, lg: 1024, xl: 1280 } as const;
+/**
+ * Layout modes. Navigation follows the input method rather than width alone:
+ * devices whose primary pointer is a finger get the bottom tab bar at any size,
+ * and only wide windows with a precise (or undetected) pointer get the sidebar.
+ * Keep in sync with AppShell.module.css.
+ */
+export const LAYOUT_MEDIA = {
+  desktop: "(min-width: 1024px) and (not (pointer: coarse))",
+  split: "(min-width: 720px) and (min-height: 481px)",
+  threePane: "(min-width: 1280px) and (min-height: 481px)",
+} as const;
 
-export function useBreakpoint() {
-  const md = useMediaQuery(`(min-width: ${BREAKPOINTS.md}px)`);
-  const lg = useMediaQuery(`(min-width: ${BREAKPOINTS.lg}px)`);
-  const xl = useMediaQuery(`(min-width: ${BREAKPOINTS.xl}px)`);
-  return { md, lg, xl, mobile: !md };
+export function useLayout() {
+  const desktop = useMediaQuery(LAYOUT_MEDIA.desktop);
+  const split = useMediaQuery(LAYOUT_MEDIA.split);
+  const threePane = useMediaQuery(LAYOUT_MEDIA.threePane);
+  return { desktop, touch: !desktop, split, threePane };
 }
 
 export function useDebouncedValue<T>(value: T, delay: number): T {

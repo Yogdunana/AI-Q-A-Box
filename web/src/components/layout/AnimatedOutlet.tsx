@@ -1,28 +1,30 @@
 import { useLocation, useOutlet } from "react-router";
 import { AnimatePresence, m } from "motion/react";
-import { page } from "../../lib/motion";
+import { routeVariants, type PageTransition } from "../../lib/motion";
 
 interface AnimatedOutletProps {
   /** Derive the transition key; routes sharing a key swap without animating. */
   keyFor?: (pathname: string) => string;
   className?: string;
+  transition?: PageTransition;
 }
 
 /**
  * Route outlet with enter/exit transitions. AnimatePresence keeps rendering the
  * outgoing element it last received, so the old page stays intact while it fades.
  */
-export function AnimatedOutlet({ keyFor = (p) => p, className }: AnimatedOutletProps) {
+export function AnimatedOutlet({ keyFor = (p) => p, className, transition = "page" }: AnimatedOutletProps) {
   const location = useLocation();
   const outlet = useOutlet();
   const key = keyFor(location.pathname);
 
   return (
-    <AnimatePresence mode="wait" initial={false}>
+    <AnimatePresence mode="wait" initial={false} custom={transition}>
       <m.div
         key={key}
         className={className}
-        variants={page}
+        custom={transition}
+        variants={routeVariants}
         initial="initial"
         animate="animate"
         exit="exit"
