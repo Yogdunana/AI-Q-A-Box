@@ -13,6 +13,7 @@ Digital Self 工作室的提问箱。仓库名是 `AI-Q-A-Box`。
 | [`docs/ai-guide.md`](docs/ai-guide.md) | 代执行 Bot 的身份、分支、PR、审核和合并规则 |
 | [`docs/ai-guide-reference.md`](docs/ai-guide-reference.md) | 上述规则的逐步说明和权限细节 |
 | [`docs/members.md`](docs/members.md) | 四位真人成员名册 |
+| [`docs/deploy.md`](docs/deploy.md) | 生产服务器、域名和 HTTPS 证书 |
 | [`docs/prd.md`](docs/prd.md) | 产品、设计和实现规格 |
 
 ## 仓库权限
