@@ -1,0 +1,108 @@
+name: deploy-web
+
+# Builds web/ and publishes it to the production site described in docs/deploy.md.
+# Manual only: the owner runs it from the Actions tab after a PR is merged into main.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-web
+  cancel-in-progress: false
+
+env:
+  DEPLOY_HOST: 103.236.72.119
+  DEPLOY_PORT: "29244"
+  DEPLOY_USER: root
+  SITE_DIR: /var/www/ai-box
+  SITE_URL: https://ai-box.yogdunana.cn
+  # Public host key of the server, pinned so the job never trusts an unknown host.
+  # Fingerprint: SHA256:oteKPYqz0SpeGeEE/6GHQ4EDIn1u3faBSrr7ihheoVw (ED25519)
+  KNOWN_HOST: "[103.236.72.119]:29244 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIANvi4P/RB2CeWNsCAGyiXnj1qsfvQ79e5AkRMiD7Fxn"
+
+jobs:
+  deploy:
+    if: github.actor == 'Yogdunana' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Lint, typecheck and test
+        run: |
+          npm run lint
+          npm run typecheck
+          npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: Configure SSH
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+        run: |
+          if [ -z "$DEPLOY_SSH_KEY" ]; then
+            echo "::error::Actions secret DEPLOY_SSH_KEY is not set. See docs/deploy.md."
+            exit 1
+          fi
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$KNOWN_HOST" > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+
+      - name: Upload and switch release
+        run: |
+          RELEASE="$(date -u +%Y%m%d%H%M%S)-${GITHUB_SHA::7}"
+          SSH=(ssh -i ~/.ssh/deploy_key -p "$DEPLOY_PORT" -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST")
+          tar -C dist -czf - . | "${SSH[@]}" "cat > /tmp/ai-box-$RELEASE.tgz"
+          "${SSH[@]}" "RELEASE='$RELEASE' SITE_DIR='$SITE_DIR' bash -s" <<'REMOTE'
+          set -euo pipefail
+          ARCHIVE="/tmp/ai-box-$RELEASE.tgz"
+          NEXT="$SITE_DIR.next"
+          trap 'rm -f "$ARCHIVE"' EXIT
+          rm -rf "$NEXT"
+          mkdir -p "$NEXT"
+          tar -xzf "$ARCHIVE" -C "$NEXT"
+          test -f "$NEXT/index.html"
+          echo "$RELEASE" > "$NEXT/.release"
+          chmod -R a+rX "$NEXT"
+          # Keep exactly one previous release for rollback.
+          rm -rf "$SITE_DIR.prev"
+          if [ -d "$SITE_DIR" ]; then mv "$SITE_DIR" "$SITE_DIR.prev"; fi
+          mv "$NEXT" "$SITE_DIR"
+          echo "Deployed release $RELEASE to $SITE_DIR"
+          REMOTE
+
+      - name: Smoke test
+        run: |
+          for path in / /lin /app; do
+            body="$(curl -fsS --retry 3 --retry-delay 2 "$SITE_URL$path")"
+            echo "$body" | grep -q '<div id="root"></div>' || { echo "::error::$path did not return the app shell"; exit 1; }
+          done
+          asset="$(curl -fsS "$SITE_URL/" | grep -o '/assets/index-[^"]*\.js' | head -1)"
+          type="$(curl -fsS -o /dev/null -w '%{content_type}' "$SITE_URL$asset")"
+          echo "$type" | grep -qi javascript || { echo "::error::$asset served as $type"; exit 1; }
+          echo "Smoke test passed ($asset)"
+
+      - name: Remove key
+        if: always()
+        run: rm -f ~/.ssh/deploy_key
