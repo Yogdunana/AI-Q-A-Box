@@ -9,7 +9,7 @@ on:
 permissions:
   contents: read
   issues: write
-  pull-requests: read
+  pull-requests: write
   statuses: write
 
 concurrency:
@@ -36,6 +36,7 @@ jobs:
           REPO: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
         run: node scripts/review-request.mjs
+        continue-on-error: true
       - name: Check member review
         env:
           GH_TOKEN: ${{ github.token }}
