@@ -1,0 +1,61 @@
+name: reject-external
+
+on:
+  pull_request_target:
+    types: [opened, reopened, synchronize]
+  issues:
+    types: [opened, reopened]
+
+permissions:
+  issues: write
+  pull-requests: write
+
+jobs:
+  reject-external:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Close submissions from outside the owning account
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = "Yogdunana";
+            const note = [
+              "本仓库公开可阅读，提交只对所有者 Yogdunana 开放。",
+              "外部 Issue 和 Pull Request 会被关闭。",
+              "四位成员 Bot 请使用所有者账号在本仓库的功能分支上工作，规则见 docs/ai-guide.md。",
+            ].join(" ");
+
+            if (context.eventName === "issues") {
+              const issue = context.payload.issue;
+              if (issue.user.login === owner) return;
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                body: note,
+              });
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                state: "closed",
+                state_reason: "not_planned",
+              });
+              return;
+            }
+
+            const pull = context.payload.pull_request;
+            const sameRepo = pull.head.repo?.full_name === pull.base.repo.full_name;
+            if (pull.user.login === owner && sameRepo) return;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pull.number,
+              body: note,
+            });
+            await github.rest.pulls.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pull.number,
+              state: "closed",
+            });
