@@ -15,7 +15,26 @@
 
 域名已经解析到这台主机。HTTP 会跳转到 HTTPS。证书颁给 `ai-box.yogdunana.cn`，本次有效期到 2027-02-12 22:22（Asia/Shanghai）。续期任务是 `certbot.timer`。
 
-现在站点上是一个占位页，产品应用还没有部署。以后的上线替换这个站点目录或 Nginx 反代，仍然使用同一台机器和同一个域名。不要另找服务器，也不要把 CI 改到这台机器上。
+站点目录由前端发布工作流替换，见下一节。以后有后端时再改 Nginx 反代，仍然使用同一台机器和同一个域名。不要另找服务器，也不要把 CI 改到这台机器上。
+
+## 前端发布
+
+工作流 `.github/workflows/deploy-web.yml` 只能由所有者手动触发：Actions → deploy-web → Run workflow，分支选 `main`。它会：
+
+1. 在 GitHub Actions 上对 `web/` 运行 lint、类型检查、测试和构建。
+2. 用 Actions secret `DEPLOY_SSH_KEY` 登录服务器。主机公钥写死在工作流里（ED25519，`SHA256:oteKPYqz0SpeGeEE/6GHQ4EDIn1u3faBSrr7ihheoVw`），指纹对不上会直接失败。
+3. 把构建产物解压到 `/var/www/ai-box.next`，再整体替换 `/var/www/ai-box`。上一版保留在 `/var/www/ai-box.prev`，`.release` 文件记录版本号。
+4. 检查 `/`、`/lin`、`/app` 都返回应用页面，并能下载入口脚本。
+
+前端是单页应用，Nginx 需要把未知路径回落到 `index.html`。当前配置已经这样处理。
+
+回滚：所有者登录服务器后执行
+
+```bash
+mv /var/www/ai-box /var/www/ai-box.bad && mv /var/www/ai-box.prev /var/www/ai-box
+```
+
+后端还没有接入，线上前端运行在演示模式，数据只保存在访问者自己的浏览器里。
 
 登录凭据由所有者保管。不要把 root 密码、SSH 私钥或 `/etc/letsencrypt` 里的私钥写入仓库、Pull Request、文档或命令输出。
 
