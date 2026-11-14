@@ -1,6 +1,6 @@
 ---
 title: Ask "Me" 代执行 Bot 规范
-version: 1.2.0
+version: 1.2.1
 repository: Yogdunana/AI-Q-A-Box
 source: 本文件 + docs/ai-guide-reference.md 共同构成唯一权威版本
 last_updated: 2026-11-14
@@ -106,6 +106,7 @@ Reviewed-Head: <当前 PR 头部的 40 位提交 SHA>
 
 - 外部可以阅读和 Fork。Fork 不能成为提交通道。
 - 只有 `Yogdunana` 能在本仓库推送分支。协作者名单保持只有所有者。
+- 所有者的 Cursor Bot 以 `cursor[bot]` 打开的 Issue 保留。它从本仓库分支打开的 Pull Request 也保留。其他账号的 Issue 和 Pull Request 仍然关闭。
 - `main` 需要 Pull Request 才能进入，禁止强推，禁止删除。
 - 只打开 squash merge，并在合并后删除功能分支。
 - 所有者用管理员令牌执行 `scripts/lock-repository.sh`。Bot 自带的安装令牌没有仓库管理权限，写不了这些开关。

@@ -52,6 +52,30 @@ test("所有者从 Fork 提交仍会关闭", () => {
   }), { close: true, comment: true });
 });
 
+test("所有者的 Cursor Bot 可以在本仓库建 Issue 和 PR", () => {
+  assert.equal(shouldCloseExternal({
+    eventName: "issues",
+    action: "opened",
+    userLogin: "cursor[bot]",
+    sameRepo: false,
+    state: "open",
+  }).close, false);
+  assert.equal(shouldCloseExternal({
+    eventName: "pull_request_target",
+    action: "opened",
+    userLogin: "cursor[bot]",
+    sameRepo: true,
+    state: "open",
+  }).close, false);
+  assert.equal(shouldCloseExternal({
+    eventName: "pull_request_target",
+    action: "opened",
+    userLogin: "cursor[bot]",
+    sameRepo: false,
+    state: "open",
+  }).close, true);
+});
+
 test("外部 Issue 会关闭，所有者 Issue 保持打开", () => {
   assert.equal(shouldCloseExternal({
     eventName: "issues",
