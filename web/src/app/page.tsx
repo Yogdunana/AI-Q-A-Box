@@ -10,6 +10,7 @@ export default function HomePage() {
         { href: "/auth/login", label: "登录", secondary: true },
       ]}
       showLogoSlot
+      splash
     />
   );
 }

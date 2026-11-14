@@ -16,6 +16,8 @@ npm run dev
 
 构建检查是 `npm run build`。路由文件检查是在仓库根目录运行 `node --test scripts/web-skeleton.test.mjs`。
 
+同一套网页按宽度换布局，不另做 App。手机（含 iPhone Duo 合上的 466×678）是单列。平板是两列。电脑上收件箱是筛选、列表、详情三列。Duo 打开后大约 951×669，两列之间留出折痕空隙。
+
 ## 文档
 
 | 文档 | 用途 |

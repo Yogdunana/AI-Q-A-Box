@@ -44,6 +44,20 @@ test("开屏页预留 Logo 且没有禁止文案", () => {
   }
 });
 
+test("网页按手机、平板、电脑和 iPhone Duo 分套布局", () => {
+  const css = readFileSync(fromRoot("web/src/app/globals.css"), "utf8");
+  for (const marker of ["layout:phone", "layout:tablet", "layout:desktop", "layout:duo-open", "layout:duo-closed"]) {
+    assert.match(css, new RegExp(marker));
+  }
+  const inbox = readFileSync(fromRoot("web/src/app/app/inbox/page.tsx"), "utf8");
+  assert.match(inbox, /inbox-filters/);
+  assert.match(inbox, /inbox-list/);
+  assert.match(inbox, /inbox-detail/);
+  const question = readFileSync(fromRoot("web/src/app/app/questions/[id]/page.tsx"), "utf8");
+  assert.match(question, /pair-question/);
+  assert.match(question, /pair-draft/);
+});
+
 test("环境示例不包含密钥值", () => {
   const example = readFileSync(fromRoot("web/.env.example"), "utf8");
   assert.match(example, /DATABASE_URL=\s*$/m);
