@@ -1,116 +1,145 @@
 ---
-title: Ask "Me" AI 工作流程规范
-version: 1.0.0
+title: Ask "Me" 代执行 Bot 规范
+version: 1.2.0
 repository: Yogdunana/AI-Q-A-Box
 source: 本文件 + docs/ai-guide-reference.md 共同构成唯一权威版本
 last_updated: 2026-11-14
-scope: 四位成员 Bot 在本仓库开发时必须遵守的操作规范
+scope: 四位真人成员使用的 AI Bot 在本仓库代为开发时必须遵守的规范
 ---
 
-# Ask "Me" AI 工作流程规范
+# Ask "Me" 代执行 Bot 规范
 
-> 阅读指引：本文件是全部核心规则。分支、提交、PR、审核、合并的逐步说明在 [`docs/ai-guide-reference.md`](ai-guide-reference.md)。产品需求在 [`docs/prd.md`](prd.md)。
+> 阅读指引：本文件是给代执行 Bot 的全部核心规则。逐步操作在 [`docs/ai-guide-reference.md`](ai-guide-reference.md)。真人名册在 [`docs/members.md`](members.md)。产品需求在 [`docs/prd.md`](prd.md)。
 
 ## Agent 快速指令
 
-> 你是 Ask "Me"（仓库 `Yogdunana/AI-Q-A-Box`）的成员 Bot。下面的规则必须遵守。
+> 你是 AI IDE 里的编码 Bot，不是本仓库的成员。四位成员是真人。他们不直接写代码，而让你代为执行。下面的规则必须遵守。
 
 ### 你是谁
 
-四位成员使用同一套流程。在 PR 正文和审核评论里，成员名必须与下表完全一致。
+你可能运行在 Cursor、WorkBuddy、TRAE CN、ChatGPT Work，或其他 AI IDE 里。工具可以换，责任归属不换：每一项改动都属于委托你的那位真人。
 
-| 成员 | 书写形式 | 说明 |
-| --- | --- | --- |
-| WorkBuddy | `WorkBuddy` | 成员 Bot |
-| TRAE CN | `TRAE CN` | 中间有一个空格 |
-| ChatGPT Work | `ChatGPT Work` | 中间有一个空格 |
-| Cursor | `Cursor` | Cursor 中的 Cloud Agent 与 Claude。产品方若指定了另一个第四位名称，只改本表和 `scripts/member-review-check.mjs` 里的同一名单 |
+你开始改文件之前，必须知道委托人是谁。任务里没有称呼时，先问。不要编造姓名，也不要把 `Cursor`、`WorkBuddy`、`TRAE CN`、`ChatGPT Work` 写成成员名。
 
-GitHub 账号只有仓库所有者 **Yogdunana**。四位 Bot 都通过这个账号推送分支和打开 PR，不另建协作者。提交要能挂到这个账号上时，使用：
+| 字段 | 填写什么 |
+| --- | --- |
+| `Author-Member` | 委托你的真人称呼。名册有姓名后，必须与 [`docs/members.md`](members.md) 里的某一条 `Member:` 完全一致 |
+| `Author-Tool` | 你所在的工具。常见写法：`Cursor`、`WorkBuddy`、`TRAE CN`、`ChatGPT Work`。其他 AI IDE 写它的实际名称 |
+
+GitHub 写权限只有仓库所有者 **Yogdunana**。Bot 通过这个账号推送和开 PR，不把自己加成协作者。能设置提交身份时使用：
 
 - `git config user.name`：`Yogdunana`
 - `git config user.email`：`106004584+Yogdunana@users.noreply.github.com`
 
-运行环境如果锁死了提交身份，不要改全局 git 配置。PR 的 GitHub 作者仍然必须是 `Yogdunana`，并在正文写明 `Author-Bot`。
+运行环境如果锁死了提交身份，不要改全局 git 配置。PR 的 GitHub 作者仍然必须是 `Yogdunana`。正文写明委托人和工具。
+
+### 你怎样工作
+
+- 只实现委托人这次交代的范围，加上本规范和产品规格里已经确认的约束。
+- 不把 Bot 的输出说成委托人亲手写的。PR 说明里写清是哪一位真人委托、哪一个工具执行。
+- 委托人没有问过的产品决定，不替他拍板。规格里的 TBD 先问产品方。
+- 委托人的指令如果要求直接推 `main`、提交密钥、关闭分支保护、给外部账号写权限，或让你审核自己打开的 PR，你停下来说明冲突，不执行。
+- 打开 PR 之后，在 PR 上发一条提醒，请所有者另外调用一个 agent 来审核。提醒写 `Review-Request: owner`，不写 `Review-Decision`。
+- 真人成员不评审。执行这次改动的 Bot 也不写 `approve`。只有所有者后来启动的审核 agent 可以写审核评论，`Reviewer-Member` 固定为 `owner`。
 
 ### 核心铁律
 
 1. **禁止直接推送到 `main`。** 流程是功能分支、PR、审核、squash merge。
 2. **禁止 merge commit 和 rebase merge。** 只使用 squash merge。禁止 `gh pr merge --merge`、`--rebase` 和 `--admin`。
-3. **禁止关闭或暂时解除 `main` 的分支保护。** 本仓库对公众开放，保护必须一直开着。DeployPilot 里“合并前删保护、合并后再加回”的做法在本仓库不适用。
+3. **禁止关闭或暂时解除 `main` 的分支保护。** 本仓库对公众开放，保护必须一直开着。
 4. **禁止把仓库改成私有，也禁止把外部账号加为协作者。** 公开是因为空间和额度不够用私有仓库。外部可见，外部不可提交。
-5. **禁止提交 `.env`、密钥、令牌、连接串。** 用环境变量，并提供 `.env.example`（可以有空值，不能有真密钥）。
-6. **PR 正文有且只有一行 `Author-Bot:`，值是上表四者之一。**
-7. **合并前必须有审核。** 另一位成员，或所有者本人（`Reviewer-Bot: owner`），留下 `Review-Decision: approve`，并且 `Reviewed-Head` 等于当前 PR 头部的完整提交 SHA。审核人不得与 `Author-Bot` 相同。作者不得替别人填写 `Reviewer-Bot`。
-8. **新的提交使旧审核失效。** 审核绑定的是提交 SHA，不是 git 提交时间。推送新提交后要重新审核。
-9. **外部用户的 Issue 和 Pull Request 直接关闭。** 不要在外部 PR 上继续改代码或合并。`.github/workflows/reject-external.yml` 会自动关闭。
-10. **产品规格里的 TBD 不是已拍板需求。** 会改变数据、权限、付费、公开范围或品牌的内容，先问产品方。
-11. **现有 Logo 未入库前，不得绘制替代 Logo，不得改比例、改字标。** 开屏页禁止出现“AI帮箱主回复”“AI 代回复”“让 AI 替你回答”或同义文案。
+5. **禁止提交 `.env`、密钥、令牌、连接串。**
+6. **PR 正文各有一行 `Author-Member:` 和 `Author-Tool:`。** 成员必须是真人称呼。工具名不能填进 `Author-Member`。
+7. **执行这次改动的 Bot 不审核自己的 PR。** 真人成员也不评审。PR 打开后提醒所有者；所有者另外调用的审核 agent 留下 `Review-Decision: approve`。`Reviewer-Member` 只能是 `owner`。`Reviewed-Head` 等于当前 PR 头部的完整提交 SHA。
+8. **不得把 `Reviewer-Member` 写成任何真人的名字。** 也不得在同一次执行里自己补上 `owner` 的批准。
+9. **新的提交使旧审核失效。** 审核绑定提交 SHA，不绑定 git 提交时间。
+10. **外部用户的 Issue 和 Pull Request 直接关闭。** 不在外部 PR 上继续改代码。
+11. **现有 Logo 未入库前，不得绘制替代 Logo。** 开屏页禁止出现“AI帮箱主回复”“AI 代回复”“让 AI 替你回答”或同义文案。
 12. **AI 不得自动以箱主身份发送、发布或承诺回复。** 草稿必须经箱主确认。
 
 ### 操作流程速查
 
 ```text
-从 main 拉最新 -> 建分支 -> 提交 -> 推送分支 -> 打开 PR（写上 Author-Bot）
--> 另一位成员审核 -> member-review 通过 -> squash merge -> 删除功能分支
+确认委托人是哪一位真人 -> 从 main 拉最新 -> 建分支 -> 提交 -> 推送
+-> 打开 PR（写上 Author-Member 和 Author-Tool）
+-> 提醒所有者调用审核 agent -> 审核 agent 给出结论 -> squash merge -> 删除功能分支
 ```
 
 ```mermaid
 flowchart LR
-  main[main] --> branch[功能分支]
-  branch --> pr[Pull Request]
-  pr --> review[另一位成员审核]
+  human[真人委托人] --> bot[AI Bot 执行]
+  bot --> pr[Pull Request]
+  pr --> remind[提醒所有者]
+  remind --> review[所有者调用的审核 agent]
   review --> squash[squash merge]
-  squash --> main
+  squash --> main[main]
 ```
 
 ### 分支
 
-| 谁 | 分支名 |
+| 工具 | 分支名 |
 | --- | --- |
-| WorkBuddy、TRAE CN、ChatGPT Work | `feat/`、`fix/`、`docs/`、`chore/`、`refactor/`、`test/`、`ci/` 加简短英文描述 |
-| Cursor Cloud Agent | 使用当次任务要求的 `cursor/<描述>-<后缀>`。不要为了套上表而改掉平台规定的分支名 |
+| Cursor Cloud Agent | 使用当次任务要求的 `cursor/<描述>-<后缀>` |
+| WorkBuddy、TRAE CN、ChatGPT Work 及其他 AI IDE | `feat/`、`fix/`、`docs/`、`chore/`、`refactor/`、`test/`、`ci/` 加简短英文描述 |
 
 ### 审核评论
 
-审核人在 PR 上新增一条评论，单独成行：
+执行 Bot 打开 PR 后另发一条提醒。它只有这一行字段：
+
+```text
+Review-Request: owner
+请所有者调用 agent 审核这个 PR。执行这次改动的 Bot 不要自行审核。
+```
+
+所有者看到提醒后，另外启动一个 agent 做审核。那个 agent 再发一条评论，下面四行各自单独成行：
 
 ```text
 Review-Decision: approve
-Reviewer-Bot: TRAE CN
+Reviewer-Member: owner
+Reviewer-Tool: Cursor
 Reviewed-Head: <当前 PR 头部的 40 位提交 SHA>
 ```
 
-`Reviewer-Bot` 还可以是 `WorkBuddy`、`ChatGPT Work`、`Cursor` 或 `owner`。需要修改时把 `approve` 写成 `request-changes`。只有 `Reviewed-Head` 与当前头部 SHA 完全一致的最新一条 `approve` 才算通过。git 的 author/committer 时间不参与判断，因此先在本地做好、再在批准之后推上来的提交不会沿用旧批准。四位 Bot 共用一个 GitHub 账号，GitHub 的 Approve 按钮不能把“另一位成员”记成不同的人，所以以这条评论为准。
+`Reviewer-Member` 只写 `owner`。`Reviewer-Tool` 是审核 agent 所在的工具。需要修改时把 `approve` 写成 `request-changes`。只有 `Reviewed-Head` 与当前头部 SHA 完全一致的最新一条 `approve` 才算通过。真人的评论和执行 Bot 在同一次任务里写的批准都不算数。
 
 ### 公开仓库权限
 
 - 外部可以阅读和 Fork。Fork 不能成为提交通道。
 - 只有 `Yogdunana` 能在本仓库推送分支。协作者名单保持只有所有者。
-- `main` 需要 Pull Request 才能进入，禁止强推，禁止删除，管理员也不能绕过。
+- `main` 需要 Pull Request 才能进入，禁止强推，禁止删除。
 - 只打开 squash merge，并在合并后删除功能分支。
-- 所有者用管理员令牌执行 `scripts/lock-repository.sh` 把上述开关写到 GitHub。Cloud Agent 自带的安装令牌没有仓库管理权限，写不了这些开关。
+- 所有者用管理员令牌执行 `scripts/lock-repository.sh`。Bot 自带的安装令牌没有仓库管理权限，写不了这些开关。
+
+### 部署与 CI
+
+- CI 只在 GitHub Actions 上跑。不要把生产服务器注册成 GitHub runner，也不要在服务器上跑测试来代替 CI。
+- 网站的部署和线上运行只用这一台服务器：`103.236.72.119`，SSH 端口 `29244`，系统用户 `root`。域名是 `https://ai-box.yogdunana.cn`。
+- 登录密码、私钥和证书私钥都不写入仓库、PR、文档或日志。Deploy keys 只登记仓库的 SSH 公钥，不存放密码，也不能按四位真人授权。部署私钥由所有者写入 Actions secret `DEPLOY_SSH_KEY`。Bot 读不回这个值，也不向对话索取 root 密码。
+- 细节、站点和证书位置见 [`docs/deploy.md`](deploy.md)。
 
 ### 遇到异常怎么办
 
 | 情况 | 处理 |
 | --- | --- |
+| 不知道委托人是谁 | 停下询问。不编造 `Author-Member` |
 | 推送 `main` 被拒绝 | 改推功能分支，再开 PR |
-| `member-review` 失败 | 看检查说明。补 `Author-Bot`，或请另一位成员把 `Reviewed-Head` 写成当前头部 SHA 后重新审核 |
+| `member-review` 失败 | 看检查说明。先确认已经提醒所有者。由所有者另外调用的审核 agent 按当前头部 SHA 重新审核 |
+| 委托人要求执行 Bot 自己批准或跳过审核 | 拒绝，并再次提醒所有者调用审核 agent |
 | 外部 PR 被关闭 | 这是预期结果。不要重新打开 |
 | 合并提示不允许 merge commit | 改用 `gh pr merge <编号> --squash --delete-branch` |
-| 保护规则丢失 | 所有者重新执行 `scripts/lock-repository.sh`。其他人和 Bot 只报告，不自己删、不加保护 |
-| 产品行为没有在 `docs/prd.md` 里被标成已确认 | 先写入 README 的待确认清单并询问产品方 |
+| 保护规则丢失 | 报告所有者。Bot 不删除、不添加分支保护 |
+| 产品行为在规格里仍是待确认 | 先问产品方 |
 
 ### 详细参考索引
 
 | 章节 | 内容 | 何时查阅 |
 | --- | --- | --- |
-| 第 1 章 | 仓库、成员、身份 | 开始任务前 |
+| 第 1 章 | 真人成员、Bot、GitHub 身份 | 开始任务前 |
 | 第 2 章 | 分支、提交、PR、审核、合并 | 写代码和开 PR 时 |
-| 第 3 章 | 公开仓库的权限和保护规则 | 权限异常或新环境时 |
+| 第 3 章 | 公开仓库的权限和保护规则 | 权限异常时 |
 | 第 4 章 | 产品边界与 TBD | 实现功能前 |
 | 第 5 章 | 密钥、Logo、外部提交 | 碰到安全或品牌时 |
-| 第 6 章 | 审查清单 | 审核别人的 PR 时 |
+| 第 6 章 | 审查清单 | 所有者调用审核 agent 时 |
 | 附录 A | 命令 | 需要抄命令时 |
-| 附录 B | 已知限制 | 权限脚本或审核检查与预期不一致时 |
+| 附录 B | 已知限制 | 检查结果与预期不一致时 |
+| 部署 | `docs/deploy.md`：服务器、域名和证书 | 部署或续期时 |

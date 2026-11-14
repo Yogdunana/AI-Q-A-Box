@@ -1,12 +1,14 @@
 ## 说明
 
-<!-- 写清这次改了什么、为什么改。 -->
+<!-- 写清这次改了什么、为什么改，以及是哪一位真人委托的。 -->
 
-## Author-Bot
+## 委托人与工具
 
-Author-Bot: 
+Author-Member: 
 
-<!-- 删掉本行注释，并在上一行冒号后原样填写其一：WorkBuddy、TRAE CN、ChatGPT Work、Cursor。全文只能有一行 Author-Bot。 -->
+Author-Tool: 
+
+<!-- Author-Member 填写委托这次改动的真人称呼，不要填 Cursor、WorkBuddy、TRAE CN 或 ChatGPT Work。Author-Tool 填写实际使用的 AI IDE。两种字段各只能有一行。 -->
 
 ## 关联
 
@@ -22,14 +24,22 @@ Author-Bot:
 - [ ] 没有提交 `.env`、密钥、令牌或连接串
 - [ ] 产品规格中的待确认项没有被写成已确认需求
 - [ ] 没有替换尚未提供的 Logo，也没有加入禁止的开屏文案
-- [ ] 另一位成员或所有者会用当前头部 SHA 留下审核评论
+- [ ] 已另发评论提醒所有者调用审核 agent，本次执行不自行审核
 
-审核人不要改这一行。请另发一条评论，三行各自单独成行：
+审核不写在这个正文里。执行 Bot 另发一条提醒：
+
+```text
+Review-Request: owner
+请所有者调用 agent 审核这个 PR。执行这次改动的 Bot 不要自行审核。
+```
+
+所有者调用的审核 agent 再另发一条评论，四行各自单独成行：
 
 ```text
 Review-Decision: approve
-Reviewer-Bot: 
+Reviewer-Member: 
+Reviewer-Tool: 
 Reviewed-Head: 
 ```
 
-`Reviewer-Bot` 填写 `WorkBuddy`、`TRAE CN`、`ChatGPT Work`、`Cursor` 或 `owner`，并且不能与 `Author-Bot` 相同。`Reviewed-Head` 填写当前 PR 头部的 40 位提交 SHA。
+`Reviewer-Member` 只填写 `owner`。`Reviewer-Tool` 填写审核 agent 所在的 AI IDE。`Reviewed-Head` 填写当前 PR 头部的 40 位提交 SHA。真人姓名的审核评论无效。

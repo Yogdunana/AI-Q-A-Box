@@ -1,45 +1,82 @@
 #!/usr/bin/env node
 
+import { readFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 
-const MEMBERS = ["WorkBuddy", "TRAE CN", "ChatGPT Work", "Cursor"];
-const REVIEWERS = new Set([...MEMBERS, "owner"]);
+const TOOL_NAMES = new Set([
+  "WorkBuddy",
+  "Work Buddy",
+  "Cursor",
+  "TRAE CN",
+  "ChatGPT Work",
+  "owner",
+]);
 const ALLOWED_LOGINS = new Set(["Yogdunana"]);
 const DECISIONS = new Set(["approve", "request-changes"]);
 const SHA = /^[0-9a-f]{40}$/i;
 
+export function rosterFromMarkdown(markdown) {
+  return fieldValues(markdown, "Member").map((name) => name.trim()).filter((name) => name.length > 0);
+}
+
+function loadRoster() {
+  try {
+    return rosterFromMarkdown(readFileSync(new URL("../docs/members.md", import.meta.url), "utf8"));
+  } catch {
+    return [];
+  }
+}
+
+function knownMember(name, roster) {
+  if (name === "owner") return false;
+  if (TOOL_NAMES.has(name)) return false;
+  if (roster.length === 0) return true;
+  return roster.includes(name);
+}
+
 function fieldValues(text, field) {
-  const pattern = new RegExp(`^${field}:\\s*(.*?)\\s*$`, "gm");
+  const pattern = new RegExp(`^${field}:[^\\S\\n]*(.*?)[^\\S\\n]*$`, "gm");
   return [...String(text ?? "").matchAll(pattern)].map((match) => match[1]);
 }
 
-export function evaluateReview({ body, comments, headSha }) {
-  const authors = fieldValues(body, "Author-Bot");
-  if (authors.length !== 1) {
-    const message = authors.length === 0
-      ? "PR 正文缺少唯一的 Author-Bot 行"
-      : "PR 正文有多条 Author-Bot";
-    return { ok: false, errors: [message], authorBot: null, reviewerBot: null };
+function blankIdentity(extra = {}) {
+  return {
+    ok: false,
+    authorMember: null,
+    authorTool: null,
+    reviewerMember: null,
+    ...extra,
+  };
+}
+
+export function evaluateReview({ body, comments, headSha, roster = [] }) {
+  const authorMembers = fieldValues(body, "Author-Member");
+  const authorTools = fieldValues(body, "Author-Tool");
+  if (authorMembers.length !== 1) {
+    const message = authorMembers.length === 0
+      ? "PR 正文缺少唯一的 Author-Member 行"
+      : "PR 正文有多条 Author-Member";
+    return blankIdentity({ errors: [message] });
+  }
+  if (authorTools.length !== 1 || authorTools[0].length === 0) {
+    return blankIdentity({
+      errors: ["PR 正文缺少唯一的 Author-Tool 行"],
+      authorMember: authorMembers[0] || null,
+    });
   }
 
-  const authorBot = authors[0];
-  if (!MEMBERS.includes(authorBot)) {
-    return {
-      ok: false,
-      errors: [`Author-Bot「${authorBot}」不在四位成员内`],
-      authorBot,
-      reviewerBot: null,
-    };
+  const authorMember = authorMembers[0];
+  const authorTool = authorTools[0];
+  if (!knownMember(authorMember, roster)) {
+    const message = TOOL_NAMES.has(authorMember)
+      ? `Author-Member「${authorMember}」是工具名，成员必须是真人`
+      : `Author-Member「${authorMember}」不在真人名册内`;
+    return blankIdentity({ errors: [message], authorMember, authorTool });
   }
 
   const normalizedHead = String(headSha ?? "").toLowerCase();
   if (!SHA.test(normalizedHead)) {
-    return {
-      ok: false,
-      errors: ["无法确认当前提交 SHA"],
-      authorBot,
-      reviewerBot: null,
-    };
+    return blankIdentity({ errors: ["无法确认当前提交 SHA"], authorMember, authorTool });
   }
 
   const decisions = [];
@@ -47,11 +84,14 @@ export function evaluateReview({ body, comments, headSha }) {
   for (const comment of comments ?? []) {
     if (!ALLOWED_LOGINS.has(comment.userLogin)) continue;
     const decisionValues = fieldValues(comment.body, "Review-Decision");
-    const reviewerValues = fieldValues(comment.body, "Reviewer-Bot");
+    const reviewerMembers = fieldValues(comment.body, "Reviewer-Member");
+    const reviewerTools = fieldValues(comment.body, "Reviewer-Tool");
     const headValues = fieldValues(comment.body, "Reviewed-Head");
-    if (decisionValues.length !== 1 || reviewerValues.length !== 1 || headValues.length !== 1) continue;
-    if (!DECISIONS.has(decisionValues[0]) || !REVIEWERS.has(reviewerValues[0])) continue;
+    if (decisionValues.length !== 1 || reviewerMembers.length !== 1 || reviewerTools.length !== 1 || headValues.length !== 1) continue;
+    if (!DECISIONS.has(decisionValues[0]) || reviewerTools[0].length === 0) continue;
     if (!SHA.test(headValues[0])) continue;
+    const reviewerMember = reviewerMembers[0];
+    if (reviewerMember !== "owner") continue;
     const reviewedHead = headValues[0].toLowerCase();
     if (reviewedHead !== normalizedHead) {
       sawOtherHead = true;
@@ -59,42 +99,47 @@ export function evaluateReview({ body, comments, headSha }) {
     }
     decisions.push({
       decision: decisionValues[0],
-      reviewerBot: reviewerValues[0],
+      reviewerMember,
       created: Date.parse(comment.createdAt) || 0,
     });
   }
 
   if (decisions.length === 0) {
-    return {
-      ok: false,
+    return blankIdentity({
       errors: [sawOtherHead
         ? "审核对应的提交不是当前最新提交"
-        : "还没有另一位成员或 owner 对当前提交的审核结论"],
-      authorBot,
-      reviewerBot: null,
-    };
+        : "还没有所有者调用的审核 agent 对当前提交给出结论"],
+      authorMember,
+      authorTool,
+    });
   }
 
   decisions.sort((left, right) => left.created - right.created);
   const latest = decisions[decisions.length - 1];
   if (latest.decision !== "approve") {
-    return {
-      ok: false,
+    return blankIdentity({
       errors: ["当前提交的最新审核结论是 request-changes"],
-      authorBot,
-      reviewerBot: latest.reviewerBot,
-    };
+      authorMember,
+      authorTool,
+      reviewerMember: latest.reviewerMember,
+    });
   }
-  if (latest.reviewerBot === authorBot) {
-    return {
-      ok: false,
-      errors: ["审核人不能与 Author-Bot 是同一位"],
-      authorBot,
-      reviewerBot: latest.reviewerBot,
-    };
+  if (latest.reviewerMember === authorMember) {
+    return blankIdentity({
+      errors: ["委托这次改动的真人不能审核自己"],
+      authorMember,
+      authorTool,
+      reviewerMember: latest.reviewerMember,
+    });
   }
 
-  return { ok: true, errors: [], authorBot, reviewerBot: latest.reviewerBot };
+  return {
+    ok: true,
+    errors: [],
+    authorMember,
+    authorTool,
+    reviewerMember: latest.reviewerMember,
+  };
 }
 
 async function github(token, path) {
@@ -134,6 +179,7 @@ export async function reviewPullRequest({ token, repo, number }) {
   const result = evaluateReview({
     body: pull.body,
     headSha: pull.head.sha,
+    roster: loadRoster(),
     comments: comments.map((comment) => ({
       userLogin: comment.user?.login,
       body: comment.body,
@@ -141,7 +187,7 @@ export async function reviewPullRequest({ token, repo, number }) {
     })),
   });
   const description = (result.ok
-    ? `已由 ${result.reviewerBot} 审核`
+    ? `已由 ${result.reviewerMember} 审核`
     : result.errors[0]
   ).slice(0, 140);
   const statusResponse = await fetch(
@@ -179,7 +225,7 @@ async function main() {
   }
   const result = await reviewPullRequest({ token, repo, number });
   if (result.ok) {
-    console.log(`member-review 通过：${result.authorBot} <- ${result.reviewerBot}`);
+    console.log(`member-review 通过：${result.authorMember} / ${result.authorTool} <- ${result.reviewerMember}`);
     return;
   }
   console.error(`member-review 未通过：${result.errors.join("；")}`);

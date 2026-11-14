@@ -8,7 +8,7 @@ on:
 
 permissions:
   contents: read
-  issues: read
+  issues: write
   pull-requests: read
   statuses: write
 
@@ -30,6 +30,12 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
+      - name: Remind owner to call a review agent
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
+        run: node scripts/review-request.mjs
       - name: Check member review
         env:
           GH_TOKEN: ${{ github.token }}
