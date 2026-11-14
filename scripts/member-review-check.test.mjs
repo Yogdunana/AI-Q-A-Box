@@ -57,55 +57,45 @@ test("工具名不能当作真人成员", () => {
   assert.match(result.errors[0], /工具名/);
 });
 
-test("另一位真人批准当前提交则通过", () => {
+test("真人成员的批准不算审核", () => {
   const result = evaluateReview({
     body: body(),
     comments: [comment(approval())],
     headSha: head,
   });
-  assert.deepEqual(result, {
-    ok: true,
-    errors: [],
-    authorMember: "甲",
-    authorTool: "Cursor",
-    reviewerMember: "乙",
-  });
+  assert.equal(result.ok, false);
+  assert.match(result.errors[0], /所有者调用的审核 agent/);
 });
 
-test("同一个工具被另一位真人使用时可以审核", () => {
-  const result = evaluateReview({
-    body: body("甲", "Cursor"),
-    comments: [comment(approval({ reviewer: "乙", tool: "Cursor" }))],
-    headSha: head,
-  });
-  assert.equal(result.ok, true);
-  assert.equal(result.reviewerMember, "乙");
-});
-
-test("委托人不能审核自己", () => {
+test("委托人写自己的名字也不能通过", () => {
   const result = evaluateReview({
     body: body("甲", "Cursor"),
     comments: [comment(approval({ reviewer: "甲", tool: "WorkBuddy" }))],
     headSha: head,
   });
   assert.equal(result.ok, false);
-  assert.match(result.errors[0], /不能审核自己/);
+  assert.match(result.errors[0], /所有者调用的审核 agent/);
 });
 
-test("所有者可以要求合并", () => {
+test("所有者调用的审核 agent 批准当前提交则通过", () => {
   const result = evaluateReview({
     body: body("甲", "TRAE CN"),
     comments: [comment(approval({ reviewer: "owner", tool: "Cursor" }))],
     headSha: head,
   });
-  assert.equal(result.ok, true);
-  assert.equal(result.reviewerMember, "owner");
+  assert.deepEqual(result, {
+    ok: true,
+    errors: [],
+    authorMember: "甲",
+    authorTool: "TRAE CN",
+    reviewerMember: "owner",
+  });
 });
 
 test("指向其他提交的批准不能覆盖当前提交", () => {
   const result = evaluateReview({
     body: body(),
-    comments: [comment(approval({ sha: other }))],
+    comments: [comment(approval({ reviewer: "owner", sha: other }))],
     headSha: head,
   });
   assert.equal(result.ok, false);
@@ -126,8 +116,8 @@ test("当前提交上最新的 request-changes 覆盖更早的 approve", () => {
   const result = evaluateReview({
     body: body(),
     comments: [
-      comment(approval(), "2026-11-14T12:10:00Z"),
-      comment(approval({ reviewer: "丙", decision: "request-changes" }), "2026-11-14T12:20:00Z"),
+      comment(approval({ reviewer: "owner" }), "2026-11-14T12:10:00Z"),
+      comment(approval({ reviewer: "owner", decision: "request-changes" }), "2026-11-14T12:20:00Z"),
     ],
     headSha: head,
   });
@@ -146,11 +136,18 @@ test("名册启用后只接受名册中的真人", () => {
   assert.match(missing.errors[0], /不在真人名册内/);
   const listed = evaluateReview({
     body: body("甲"),
-    comments: [comment(approval({ reviewer: "乙" }))],
+    comments: [comment(approval({ reviewer: "owner" }))],
     headSha: head,
     roster,
   });
   assert.equal(listed.ok, true);
+  const humanReviewer = evaluateReview({
+    body: body("甲"),
+    comments: [comment(approval({ reviewer: "乙" }))],
+    headSha: head,
+    roster,
+  });
+  assert.equal(humanReviewer.ok, false);
 });
 
 test("名册从 Member 行读取，空行忽略", () => {
@@ -160,7 +157,7 @@ test("名册从 Member 行读取，空行忽略", () => {
 test("其他 AI IDE 的工具名可以填写", () => {
   const result = evaluateReview({
     body: body("甲", "其他 IDE"),
-    comments: [comment(approval({ tool: "其他 IDE" }))],
+    comments: [comment(approval({ reviewer: "owner", tool: "其他 IDE" }))],
     headSha: head,
   });
   assert.equal(result.ok, true);

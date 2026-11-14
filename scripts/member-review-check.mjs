@@ -91,8 +91,7 @@ export function evaluateReview({ body, comments, headSha, roster = [] }) {
     if (!DECISIONS.has(decisionValues[0]) || reviewerTools[0].length === 0) continue;
     if (!SHA.test(headValues[0])) continue;
     const reviewerMember = reviewerMembers[0];
-    const reviewerKnown = reviewerMember === "owner" || knownMember(reviewerMember, roster);
-    if (!reviewerKnown) continue;
+    if (reviewerMember !== "owner") continue;
     const reviewedHead = headValues[0].toLowerCase();
     if (reviewedHead !== normalizedHead) {
       sawOtherHead = true;
@@ -109,7 +108,7 @@ export function evaluateReview({ body, comments, headSha, roster = [] }) {
     return blankIdentity({
       errors: [sawOtherHead
         ? "审核对应的提交不是当前最新提交"
-        : "还没有另一位真人或 owner 对当前提交的审核结论"],
+        : "还没有所有者调用的审核 agent 对当前提交给出结论"],
       authorMember,
       authorTool,
     });

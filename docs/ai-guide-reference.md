@@ -1,6 +1,6 @@
 ---
 title: Ask "Me" 代执行 Bot 参考
-version: 1.1.0
+version: 1.2.0
 repository: Yogdunana/AI-Q-A-Box
 source: 与 docs/ai-guide.md 一起使用。规则冲突时，以更严格的安全限制为准。
 last_updated: 2026-11-14
@@ -29,12 +29,13 @@ last_updated: 2026-11-14
 
 | 角色 | 是什么 | PR 里怎么写 |
 | --- | --- | --- |
-| 真人成员 | 委托和负责的人 | `Author-Member`、`Reviewer-Member` |
-| 代执行 Bot | Cursor、WorkBuddy、TRAE CN、ChatGPT Work 或其他 AI IDE 中的执行者 | `Author-Tool`、`Reviewer-Tool` |
+| 真人成员 | 委托和负责的人 | `Author-Member` |
+| 代执行 Bot | Cursor、WorkBuddy、TRAE CN、ChatGPT Work 或其他 AI IDE 中的执行者 | `Author-Tool` |
+| 审核 agent | 所有者看到提醒后另外启动的一次执行 | `Reviewer-Tool`，`Reviewer-Member` 固定为 `owner` |
 
-Bot 不是成员，没有自己的免审资格，也不能被加成 GitHub 协作者。四位真人的流程相同。名册还没有姓名时，Bot 使用委托人在任务里给出的称呼。名册写入非空 `Member:` 之后，检查只接受这些称呼。
+Bot 不是成员，也不能被加成 GitHub 协作者。四位真人的流程相同。名册还没有姓名时，Bot 使用委托人在任务里给出的称呼。名册写入非空 `Member:` 之后，`Author-Member` 只接受这些称呼。
 
-Bot 不得编造姓名，不得把工具名填进 `Author-Member` 或 `Reviewer-Member`。没有另一位真人或所有者的明确决定，不得替他写下审核结论。
+Bot 不得编造姓名，不得把工具名填进 `Author-Member`。真人成员不评审。执行这次改动的 Bot 不写审核结论。
 
 ### 1.3 GitHub 身份
 
@@ -104,29 +105,38 @@ Author-Tool: Cursor
 
 ### 2.4 审核
 
-审核决定来自另一位真人，或仓库所有者。代执行的 Bot 只负责把已经作出的决定写成评论。委托这次改动的真人不能审核自己。Bot 不代替别人填写 `Reviewer-Member`。
+真人成员不评审。执行这次改动的 Bot 打开 PR 后提醒所有者，然后停下。所有者另外调用一个 agent，由那次执行做审核。
 
-代审核的 Bot 在 PR 上新发一条评论。下面四行各自单独成行，且各出现一次：
+提醒是一条新评论：
+
+```text
+Review-Request: owner
+请所有者调用 agent 审核这个 PR。执行这次改动的 Bot 不要自行审核。
+```
+
+同一条 PR 上已有 `Review-Request: owner` 时，不再重复发送。工作流 `.github/workflows/member-review.yml` 也会在缺少这条提醒时补上。提醒不包含 `Review-Decision`，不能代替审核。
+
+审核 agent 在 PR 上新发一条评论。下面四行各自单独成行，且各出现一次：
 
 ```text
 Review-Decision: approve
-Reviewer-Member: 另一位真人的称呼
-Reviewer-Tool: TRAE CN
+Reviewer-Member: owner
+Reviewer-Tool: Cursor
 Reviewed-Head: 0123456789abcdef0123456789abcdef01234567
 ```
 
-仓库所有者明确要求合并时，`Reviewer-Member` 写 `owner`，`Reviewer-Tool` 写发出评论的工具。`Reviewed-Head` 是审核当时 PR 头部的完整 40 位提交 SHA，用 `git rev-parse HEAD` 或 PR 页面上的提交哈希取得。`Review-Decision` 只使用 `approve` 或 `request-changes`。
+`Reviewer-Member` 只写 `owner`。`Reviewer-Tool` 写审核 agent 所在的工具。`Reviewed-Head` 是审核当时 PR 头部的完整 40 位提交 SHA，用 `git rev-parse HEAD` 或 PR 页面上的提交哈希取得。`Review-Decision` 只使用 `approve` 或 `request-changes`。
 
 通过条件：
 
 1. 评论作者的 GitHub 登录名是 `Yogdunana`。
 2. `Reviewed-Head` 与当前 PR 头部 SHA 一致。比较的是提交内容的标识，不是 git committer 时间。本地较早创建、在批准之后才推送的提交有另一个 SHA，旧批准不会覆盖它。
 3. 针对该 SHA 的最新一条结论是 `approve`。
-4. `Reviewer-Member` 是另一位真人，或 `owner`。它与 `Author-Member` 不同。两位真人使用同一个 AI IDE 时，工具名可以相同。
+4. `Reviewer-Member` 是 `owner`。写成真人姓名的评论会被忽略。
 
-推送新提交之后，头部 SHA 改变，旧评论失效，需要重新审核。
+推送新提交之后，头部 SHA 改变，旧审核失效。执行 Bot 再次提醒所有者，由所有者重新调用审核 agent。
 
-GitHub 的 Approve 按钮不能区分四位真人，因为代执行的 Bot 共用 `Yogdunana` 这一个账号。分支保护里的“必需批准人数”保持为 0。跨成员审核以评论为准，由 `member-review` 检查。
+四位真人和审核 agent 共用 `Yogdunana` 这一个账号，GitHub 无法从登录名分辨是哪一次执行。分支保护里的“必需批准人数”保持为 0。审核以评论为准，由 `member-review` 检查。执行 Bot 不得在同一次任务里为自己的 PR 写入 `owner` 批准。
 
 检查命令：
 
@@ -138,7 +148,7 @@ node --test scripts/member-review-check.test.mjs
 
 ### 2.5 合并
 
-`member-review` 通过，并且作者已经处理完 `request-changes` 之后，由 `Yogdunana` 账号执行：
+`member-review` 通过，并且 `request-changes` 已经处理完之后，由所有者这次调用的审核 agent 使用 `Yogdunana` 账号执行：
 
 ```bash
 gh pr merge <编号> --squash --delete-branch
@@ -173,7 +183,7 @@ gh pr merge <编号> --admin
 | 机制 | 作用 |
 | --- | --- |
 | `.github/workflows/reject-external.yml` | 关闭非 `Yogdunana` 的 Issue，以及来自 Fork 或其他账号的 Pull Request。已经关闭的 PR 再次推送时不再重复留言 |
-| `.github/workflows/member-review.yml` | 把成员审核结果写成 `member-review` 状态 |
+| `.github/workflows/member-review.yml` | 缺少提醒时通知所有者，并把审核结果写成 `member-review` 状态 |
 | `.github/CODEOWNERS` | 标明所有者。不把它设成 GitHub 必需批准，避免同一账号无法批准自己的 PR |
 | `.gitignore` | 忽略 `.env` 和环境文件 |
 
@@ -252,7 +262,10 @@ GH_TOKEN="<具有 administration 权限的令牌>" scripts/lock-repository.sh --
 
 ## 第 5 章：安全
 
-- 密钥只放在环境变量或 GitHub Actions 的加密 Secret 中。
+- 服务器登录不使用 GitHub Deploy keys。Deploy keys 只接受一把仓库 SSH 公钥，密码放不进去，也不能限定给四位真人。谁拿到对应私钥谁就能用。
+- 部署私钥放在本仓库的 Actions secret `DEPLOY_SSH_KEY`。写入后不能从 API 读回。公开仓库的访客看不到。四位真人的 Bot 也不读取、不打印这个值。
+- 需要登录服务器时，请所有者触发使用该 secret 的部署工作流。不要把 root 密码贴进对话、PR 或仓库。
+- 其他密钥只放在环境变量或 GitHub Actions 的加密 Secret 中。
 - 不在文档、工作流日志、截图和 PR 正文里粘贴令牌。`scripts/lock-repository.sh` 从 `GH_TOKEN` 读取令牌，不接受把令牌写进命令历史以外的文件。
 - 用户提交的内容在将来的页面上按文本渲染。支持富文本之前先做白名单净化。
 - 箱主数据的查询必须带所有者或提问箱归属。这个规则从第一行后端代码开始生效。
@@ -260,14 +273,14 @@ GH_TOKEN="<具有 administration 权限的令牌>" scripts/lock-repository.sh --
 
 ## 第 6 章：审查清单
 
-审核人逐项看过再写 `approve`：
+所有者调用的审核 agent 逐项看过再写 `approve`：
 
 1. `Author-Member` 是委托这次改动的真人，`Author-Tool` 是实际执行的 AI IDE。
 2. 分支符合第 2.1 节，目标是 `main`。
 3. diff 里没有 `.env`、密钥、令牌、连接串。
 4. 没有把 TBD 写成已确认需求，没有替换 Logo，没有禁止的开屏文案。
 5. 有测试或文档说明时，PR 的“验证”一节写了命令和结果。
-6. `Reviewer-Member` 是另一位真人，或在所有者明确要求合并时写 `owner`。
+6. `Reviewer-Member` 写 `owner`。这条评论由所有者另外调用的审核 agent 发出，不由打开 PR 的那次执行发出。
 7. `Reviewed-Head` 写成这次看到的 PR 头部完整 SHA。之后若有新提交，这条审核自动失效。
 
 任一不满足，使用 `Review-Decision: request-changes`，并写上对应的 `Reviewed-Head`。
@@ -292,7 +305,7 @@ GH_TOKEN="<administration token>" scripts/lock-repository.sh
 
 | 编号 | 限制 | 处理 |
 | --- | --- | --- |
-| 1 | 四位真人和他们的 Bot 共用 `Yogdunana`，GitHub 无法从账号区分是谁委托、谁审核 | 用 `Author-Member`、`Author-Tool`、`Reviewer-Member`、`Reviewer-Tool`。Bot 不得冒用真人的名字 |
+| 1 | 四位真人和审核 agent 共用 `Yogdunana`，GitHub 无法从账号区分是哪一次执行 | 用 `Author-Member`、`Author-Tool`、`Reviewer-Member: owner`、`Reviewer-Tool`。执行 Bot 不给自己的 PR 写批准 |
 | 2 | Cloud Agent 安装令牌没有 administration 权限 | 所有者在本机执行 `scripts/lock-repository.sh` |
 | 3 | 个人公开仓库可能无法关闭 Fork | Fork 仍然不能向本仓库推送。外部 PR 会被工作流关闭 |
 | 4 | `member-review` 在进入 `main` 之前不会对已打开的 PR 生效 | 工作流合并进 `main` 后再执行 `--with-review-check` |

@@ -4,7 +4,7 @@
 
 Bot 不是成员。Bot 不得编造姓名，也不得把工具名写成成员名。
 
-委托人在任务里说明自己的称呼后，Bot 把该称呼写入 PR 的 `Author-Member`。产品方确认四位姓名后，在下面逐行添加。出现任何一条非空 `Member:` 之后，审核检查只接受名册里的称呼，以及所有者指令所用的 `owner`。
+委托人在任务里说明自己的称呼后，Bot 把该称呼写入 PR 的 `Author-Member`。产品方确认四位姓名后，在下面逐行添加。出现任何一条非空 `Member:` 之后，`Author-Member` 只接受名册里的称呼。审核评论的 `Reviewer-Member` 只接受 `owner`，由所有者另外调用的审核 agent 填写。
 
 ```text
 Member: 

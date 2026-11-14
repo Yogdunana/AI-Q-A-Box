@@ -24,9 +24,16 @@ Author-Tool:
 - [ ] 没有提交 `.env`、密钥、令牌或连接串
 - [ ] 产品规格中的待确认项没有被写成已确认需求
 - [ ] 没有替换尚未提供的 Logo，也没有加入禁止的开屏文案
-- [ ] 另一位真人或所有者会用当前头部 SHA 留下审核评论
+- [ ] 已另发评论提醒所有者调用审核 agent，本次执行不自行审核
 
-审核人不要改上面的委托人。请另发一条评论，四行各自单独成行：
+审核不写在这个正文里。执行 Bot 另发一条提醒：
+
+```text
+Review-Request: owner
+请所有者调用 agent 审核这个 PR。执行这次改动的 Bot 不要自行审核。
+```
+
+所有者调用的审核 agent 再另发一条评论，四行各自单独成行：
 
 ```text
 Review-Decision: approve
@@ -35,4 +42,4 @@ Reviewer-Tool:
 Reviewed-Head: 
 ```
 
-`Reviewer-Member` 填写另一位真人的称呼。仓库所有者明确要求合并时填写 `owner`。它不能与 `Author-Member` 相同。`Reviewer-Tool` 填写发出这条评论的 AI IDE。`Reviewed-Head` 填写当前 PR 头部的 40 位提交 SHA。
+`Reviewer-Member` 只填写 `owner`。`Reviewer-Tool` 填写审核 agent 所在的 AI IDE。`Reviewed-Head` 填写当前 PR 头部的 40 位提交 SHA。真人姓名的审核评论无效。

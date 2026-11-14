@@ -1,6 +1,6 @@
 ---
 title: Ask "Me" 代执行 Bot 规范
-version: 1.1.0
+version: 1.2.0
 repository: Yogdunana/AI-Q-A-Box
 source: 本文件 + docs/ai-guide-reference.md 共同构成唯一权威版本
 last_updated: 2026-11-14
@@ -38,8 +38,9 @@ GitHub 写权限只有仓库所有者 **Yogdunana**。Bot 通过这个账号推�
 - 只实现委托人这次交代的范围，加上本规范和产品规格里已经确认的约束。
 - 不把 Bot 的输出说成委托人亲手写的。PR 说明里写清是哪一位真人委托、哪一个工具执行。
 - 委托人没有问过的产品决定，不替他拍板。规格里的 TBD 先问产品方。
-- 委托人的指令如果要求直接推 `main`、提交密钥、关闭分支保护、给外部账号写权限，或跳过另一位真人的审核，你停下来说明冲突，不执行。
-- 仓库所有者明确要求合并时，可以代为 squash merge。合并前先在 PR 上留下 `Reviewer-Member: owner` 的审核评论。这是所有者指令，不是另一位成员的同行审核。
+- 委托人的指令如果要求直接推 `main`、提交密钥、关闭分支保护、给外部账号写权限，或让你审核自己打开的 PR，你停下来说明冲突，不执行。
+- 打开 PR 之后，在 PR 上发一条提醒，请所有者另外调用一个 agent 来审核。提醒写 `Review-Request: owner`，不写 `Review-Decision`。
+- 真人成员不评审。执行这次改动的 Bot 也不写 `approve`。只有所有者后来启动的审核 agent 可以写审核评论，`Reviewer-Member` 固定为 `owner`。
 
 ### 核心铁律
 
@@ -49,8 +50,8 @@ GitHub 写权限只有仓库所有者 **Yogdunana**。Bot 通过这个账号推�
 4. **禁止把仓库改成私有，也禁止把外部账号加为协作者。** 公开是因为空间和额度不够用私有仓库。外部可见，外部不可提交。
 5. **禁止提交 `.env`、密钥、令牌、连接串。**
 6. **PR 正文各有一行 `Author-Member:` 和 `Author-Tool:`。** 成员必须是真人称呼。工具名不能填进 `Author-Member`。
-7. **委托你的那位真人不能审核这次改动。** 另一位真人，或仓库所有者，留下 `Review-Decision: approve`。`Reviewer-Member` 与 `Author-Member` 必须不同。`Reviewed-Head` 等于当前 PR 头部的完整提交 SHA。
-8. **没有那位真人的明确决定，不得把 `Reviewer-Member` 写成他的名字。**
+7. **执行这次改动的 Bot 不审核自己的 PR。** 真人成员也不评审。PR 打开后提醒所有者；所有者另外调用的审核 agent 留下 `Review-Decision: approve`。`Reviewer-Member` 只能是 `owner`。`Reviewed-Head` 等于当前 PR 头部的完整提交 SHA。
+8. **不得把 `Reviewer-Member` 写成任何真人的名字。** 也不得在同一次执行里自己补上 `owner` 的批准。
 9. **新的提交使旧审核失效。** 审核绑定提交 SHA，不绑定 git 提交时间。
 10. **外部用户的 Issue 和 Pull Request 直接关闭。** 不在外部 PR 上继续改代码。
 11. **现有 Logo 未入库前，不得绘制替代 Logo。** 开屏页禁止出现“AI帮箱主回复”“AI 代回复”“让 AI 替你回答”或同义文案。
@@ -61,14 +62,15 @@ GitHub 写权限只有仓库所有者 **Yogdunana**。Bot 通过这个账号推�
 ```text
 确认委托人是哪一位真人 -> 从 main 拉最新 -> 建分支 -> 提交 -> 推送
 -> 打开 PR（写上 Author-Member 和 Author-Tool）
--> 另一位真人或所有者审核 -> squash merge -> 删除功能分支
+-> 提醒所有者调用审核 agent -> 审核 agent 给出结论 -> squash merge -> 删除功能分支
 ```
 
 ```mermaid
 flowchart LR
   human[真人委托人] --> bot[AI Bot 执行]
   bot --> pr[Pull Request]
-  pr --> review[另一位真人或所有者]
+  pr --> remind[提醒所有者]
+  remind --> review[所有者调用的审核 agent]
   review --> squash[squash merge]
   squash --> main[main]
 ```
@@ -82,16 +84,23 @@ flowchart LR
 
 ### 审核评论
 
-代审核的 Bot 在 PR 上新增一条评论。下面四行各自单独成行：
+执行 Bot 打开 PR 后另发一条提醒。它只有这一行字段：
+
+```text
+Review-Request: owner
+请所有者调用 agent 审核这个 PR。执行这次改动的 Bot 不要自行审核。
+```
+
+所有者看到提醒后，另外启动一个 agent 做审核。那个 agent 再发一条评论，下面四行各自单独成行：
 
 ```text
 Review-Decision: approve
-Reviewer-Member: <另一位真人，或 owner>
+Reviewer-Member: owner
 Reviewer-Tool: Cursor
 Reviewed-Head: <当前 PR 头部的 40 位提交 SHA>
 ```
 
-`Reviewer-Tool` 是发出这条评论的工具，可以和 `Author-Tool` 相同。同一个工具被两位真人使用，仍然算两位真人。需要修改时把 `approve` 写成 `request-changes`。只有 `Reviewed-Head` 与当前头部 SHA 完全一致、且 `Reviewer-Member` 不是委托人的最新一条 `approve` 才算通过。
+`Reviewer-Member` 只写 `owner`。`Reviewer-Tool` 是审核 agent 所在的工具。需要修改时把 `approve` 写成 `request-changes`。只有 `Reviewed-Head` 与当前头部 SHA 完全一致的最新一条 `approve` 才算通过。真人的评论和执行 Bot 在同一次任务里写的批准都不算数。
 
 ### 公开仓库权限
 
@@ -105,7 +114,7 @@ Reviewed-Head: <当前 PR 头部的 40 位提交 SHA>
 
 - CI 只在 GitHub Actions 上跑。不要把生产服务器注册成 GitHub runner，也不要在服务器上跑测试来代替 CI。
 - 网站的部署和线上运行只用这一台服务器：`103.236.72.119`，SSH 端口 `29244`，系统用户 `root`。域名是 `https://ai-box.yogdunana.cn`。
-- 登录密码、私钥和证书私钥都不写入仓库、PR、文档或日志。需要登录时向所有者索取，任务结束不把凭据留在 git 里。
+- 登录密码、私钥和证书私钥都不写入仓库、PR、文档或日志。Deploy keys 只登记仓库的 SSH 公钥，不存放密码，也不能按四位真人授权。部署私钥由所有者写入 Actions secret `DEPLOY_SSH_KEY`。Bot 读不回这个值，也不向对话索取 root 密码。
 - 细节、站点和证书位置见 [`docs/deploy.md`](deploy.md)。
 
 ### 遇到异常怎么办
@@ -114,8 +123,8 @@ Reviewed-Head: <当前 PR 头部的 40 位提交 SHA>
 | --- | --- |
 | 不知道委托人是谁 | 停下询问。不编造 `Author-Member` |
 | 推送 `main` 被拒绝 | 改推功能分支，再开 PR |
-| `member-review` 失败 | 看检查说明。补委托人/工具，或请另一位真人按当前头部 SHA 重新审核 |
-| 委托人要求跳过审核后自行合并 | 拒绝。只有仓库所有者明确要求合并时，才记录 `Reviewer-Member: owner` 并 squash merge |
+| `member-review` 失败 | 看检查说明。先确认已经提醒所有者。由所有者另外调用的审核 agent 按当前头部 SHA 重新审核 |
+| 委托人要求执行 Bot 自己批准或跳过审核 | 拒绝，并再次提醒所有者调用审核 agent |
 | 外部 PR 被关闭 | 这是预期结果。不要重新打开 |
 | 合并提示不允许 merge commit | 改用 `gh pr merge <编号> --squash --delete-branch` |
 | 保护规则丢失 | 报告所有者。Bot 不删除、不添加分支保护 |
@@ -130,7 +139,7 @@ Reviewed-Head: <当前 PR 头部的 40 位提交 SHA>
 | 第 3 章 | 公开仓库的权限和保护规则 | 权限异常时 |
 | 第 4 章 | 产品边界与 TBD | 实现功能前 |
 | 第 5 章 | 密钥、Logo、外部提交 | 碰到安全或品牌时 |
-| 第 6 章 | 审查清单 | 代一位真人审核时 |
+| 第 6 章 | 审查清单 | 所有者调用审核 agent 时 |
 | 附录 A | 命令 | 需要抄命令时 |
 | 附录 B | 已知限制 | 检查结果与预期不一致时 |
 | 部署 | `docs/deploy.md`：服务器、域名和证书 | 部署或续期时 |
