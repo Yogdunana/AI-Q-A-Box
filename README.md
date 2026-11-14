@@ -4,7 +4,17 @@ Digital Self 工作室的提问箱。仓库名是 `AI-Q-A-Box`。
 
 这个仓库公开可阅读。提交只对所有者 **Yogdunana** 开放。四位成员是真人。他们用 WorkBuddy、Cursor、TRAE CN、ChatGPT Work 或其他 AI IDE，让 Bot 代为改代码。Bot 的规则写在 [`docs/ai-guide.md`](docs/ai-guide.md)。
 
-应用代码还没有开始。产品规格在 [`docs/prd.md`](docs/prd.md)。规格里标成待确认的内容还不是产品决定。
+应用骨架在 [`web/`](web/)。产品规格在 [`docs/prd.md`](docs/prd.md)。规格里标成待确认的内容还不是产品决定。
+
+选择 Next.js、TypeScript 和 React，是因为仓库里原来没有框架。PRD 允许空仓库采用这套方案。页面先按规格中的路由占位，业务、数据库和外部供应商还没有接上。
+
+```bash
+cd web
+npm install
+npm run dev
+```
+
+构建检查是 `npm run build`。路由文件检查是在仓库根目录运行 `node --test scripts/web-skeleton.test.mjs`。
 
 ## 文档
 
