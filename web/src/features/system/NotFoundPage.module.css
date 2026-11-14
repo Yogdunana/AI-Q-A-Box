@@ -1,0 +1,35 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  background: var(--paper);
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  height: calc(56px + env(safe-area-inset-top));
+  padding: env(safe-area-inset-top) max(var(--space-5), env(safe-area-inset-right)) 0
+    max(var(--space-5), env(safe-area-inset-left));
+}
+
+@media (min-width: 768px) {
+  .topbar {
+    height: calc(64px + env(safe-area-inset-top));
+    padding: env(safe-area-inset-top) max(var(--space-8), env(safe-area-inset-right)) 0
+      max(var(--space-8), env(safe-area-inset-left));
+  }
+}
+
+.main {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  padding-bottom: 10vh;
+}
+
+.inApp {
+  display: grid;
+  place-items: center;
+  min-height: 60vh;
+}

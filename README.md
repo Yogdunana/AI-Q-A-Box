@@ -4,7 +4,7 @@ Digital Self 工作室的提问箱。仓库名是 `AI-Q-A-Box`。
 
 这个仓库公开可阅读。提交只对所有者 **Yogdunana** 开放。四位成员是真人。他们用 WorkBuddy、Cursor、TRAE CN、ChatGPT Work 或其他 AI IDE，让 Bot 代为改代码。Bot 的规则写在 [`docs/ai-guide.md`](docs/ai-guide.md)。
 
-应用代码还没有开始。产品规格在 [`docs/prd.md`](docs/prd.md)。规格里标成待确认的内容还不是产品决定。
+前端在 [`web/`](web/)，说明见 [`web/README.md`](web/README.md)。后端还没有开始，前端暂时用浏览器本地的演示数据运行。产品规格在 [`docs/prd.md`](docs/prd.md)。规格里标成待确认的内容还不是产品决定。
 
 ## 文档
 
@@ -15,6 +15,7 @@ Digital Self 工作室的提问箱。仓库名是 `AI-Q-A-Box`。
 | [`docs/members.md`](docs/members.md) | 四位真人成员名册 |
 | [`docs/deploy.md`](docs/deploy.md) | 生产服务器、域名和 HTTPS 证书 |
 | [`docs/prd.md`](docs/prd.md) | 产品、设计和实现规格 |
+| [`web/README.md`](web/README.md) | 前端架构、API 契约、设计系统和本地运行 |
 
 ## 仓库权限
 
@@ -27,6 +28,14 @@ Digital Self 工作室的提问箱。仓库名是 `AI-Q-A-Box`。
 
 ```bash
 node --test scripts/member-review-check.test.mjs
+```
+
+前端：
+
+```bash
+cd web
+npm install
+npm run lint && npm run typecheck && npm test && npm run build
 ```
 
 ## 待产品确认

@@ -1,0 +1,119 @@
+.page {
+  width: 100%;
+  max-width: var(--content-max);
+  margin: 0 auto;
+  padding: var(--space-6) var(--space-5) var(--space-12);
+}
+
+.narrow {
+  max-width: 760px;
+}
+
+@media (min-width: 768px) {
+  .page {
+    padding: var(--space-10) var(--space-8) var(--space-16);
+  }
+}
+
+@media (min-width: 1280px) {
+  .page {
+    padding: var(--space-12) var(--space-12) var(--space-20);
+  }
+}
+
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-4) var(--space-6);
+  margin-bottom: var(--space-8);
+}
+
+.headerText {
+  min-width: 0;
+  max-width: 620px;
+}
+
+.eyebrow {
+  margin-bottom: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--ink-3);
+}
+
+.title {
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-semibold);
+  letter-spacing: -0.022em;
+  line-height: var(--leading-tight);
+}
+
+@media (min-width: 768px) {
+  .title {
+    font-size: var(--text-3xl);
+  }
+}
+
+.description {
+  margin-top: var(--space-2);
+  font-size: var(--text-base);
+  color: var(--ink-2);
+  line-height: var(--leading-normal);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.section + .section {
+  margin-top: var(--space-10);
+}
+
+.sectionHead {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.sectionTitle {
+  font-size: var(--text-base);
+  font-weight: var(--weight-semibold);
+  letter-spacing: -0.01em;
+}
+
+.sectionDescription {
+  margin-top: var(--space-1);
+  font-size: var(--text-md);
+  color: var(--ink-3);
+}
+
+.card {
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.cardPadded {
+  padding: var(--space-5);
+}
+
+@media (min-width: 768px) {
+  .cardPadded {
+    padding: var(--space-6);
+  }
+}
+
+/* Short landscape screens: reclaim vertical space */
+@media (max-height: 480px) {
+  .page {
+    padding-top: var(--space-5);
+  }
+
+  .header {
+    margin-bottom: var(--space-5);
+  }
+}

@@ -1,0 +1,384 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  background: var(--paper);
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  height: calc(56px + env(safe-area-inset-top));
+  padding: env(safe-area-inset-top) max(var(--space-5), env(safe-area-inset-right)) 0
+    max(var(--space-5), env(safe-area-inset-left));
+}
+
+@media (min-width: 768px) {
+  .topbar {
+    height: 64px;
+    padding: 0 var(--space-8);
+  }
+}
+
+.main {
+  flex: 1;
+  width: 100%;
+  max-width: 640px;
+  margin: 0 auto;
+  padding: var(--space-6) max(var(--space-5), env(safe-area-inset-right)) var(--space-12)
+    max(var(--space-5), env(safe-area-inset-left));
+}
+
+@media (min-width: 768px) {
+  .main {
+    padding: var(--space-12) var(--space-6) var(--space-16);
+  }
+}
+
+.composerWrap {
+  margin-top: var(--space-8);
+}
+
+.composer {
+  border-radius: var(--radius-xl);
+  background: var(--surface);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+}
+
+.writing {
+  position: relative;
+  border-bottom: 1px solid var(--line);
+  transition: box-shadow var(--dur-base) var(--ease-out);
+}
+
+.writing:focus-within {
+  box-shadow: inset 0 0 0 1.5px var(--accent);
+}
+
+.writing[data-invalid] {
+  box-shadow: inset 0 0 0 1.5px var(--danger);
+}
+
+.writing .questionInput,
+.writing .questionInput:focus,
+.writing .questionInput:hover:not(:disabled):not(:focus),
+.writing .questionInput[aria-invalid="true"],
+.writing .questionInput[aria-invalid="true"]:focus {
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.questionInput {
+  padding: var(--space-5) var(--space-5) var(--space-2);
+  font-family: var(--font-serif);
+  font-size: 1.125rem;
+  line-height: 1.7;
+}
+
+.questionInput::placeholder {
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+}
+
+@media (min-width: 768px) {
+  .questionInput {
+    padding: var(--space-6) var(--space-6) var(--space-2);
+  }
+}
+
+.writingMeta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-height: 36px;
+  padding: 0 var(--space-5) var(--space-3);
+}
+
+@media (min-width: 768px) {
+  .writingMeta {
+    padding: 0 var(--space-6) var(--space-3);
+  }
+}
+
+.shortcut {
+  display: none;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--text-xs);
+  color: var(--ink-3);
+}
+
+.shortcut > span {
+  margin-left: 2px;
+}
+
+@media (hover: hover) and (pointer: fine) and (min-width: 768px) {
+  .shortcut {
+    display: inline-flex;
+  }
+}
+
+.inlineError {
+  font-size: var(--text-sm);
+  color: var(--danger);
+}
+
+.identity {
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--line);
+}
+
+@media (min-width: 768px) {
+  .identity {
+    padding: var(--space-4) var(--space-6);
+  }
+}
+
+.identity:empty {
+  display: none;
+}
+
+.nicknameWrap {
+  overflow: hidden;
+}
+
+.identity > .nicknameWrap:not(:first-child) .nicknameField {
+  padding-top: var(--space-4);
+}
+
+.nicknameField {
+  padding-bottom: 2px;
+}
+
+.formError {
+  overflow: hidden;
+}
+
+.formErrorInner {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin: var(--space-4) var(--space-5) 0;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--danger-soft);
+  color: var(--danger);
+  font-size: var(--text-md);
+}
+
+.formErrorInner svg {
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5) var(--space-5);
+  background: linear-gradient(var(--surface), #fdfcfa);
+}
+
+@media (min-width: 640px) {
+  .actions {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-4) var(--space-6) var(--space-5);
+  }
+}
+
+.privacy {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  line-height: var(--leading-snug);
+  color: var(--ink-3);
+  max-width: 340px;
+}
+
+.privacy svg {
+  width: 14px;
+  height: 14px;
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.submit {
+  flex-shrink: 0;
+}
+
+@media (max-width: 639px) {
+  .submit {
+    width: 100%;
+    order: -1;
+  }
+}
+
+.paused {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-4);
+  padding: var(--space-6);
+  border-radius: var(--radius-xl);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.paused > svg {
+  width: 22px;
+  height: 22px;
+  margin-top: 1px;
+  flex-shrink: 0;
+  color: var(--status-reviewing);
+}
+
+.pausedTitle {
+  font-weight: var(--weight-semibold);
+}
+
+.pausedBody {
+  margin-top: var(--space-1);
+  font-size: var(--text-md);
+  color: var(--ink-2);
+}
+
+.skeletonOwner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.skeletonOwnerText {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.footer {
+  display: flex;
+  justify-content: center;
+  padding: var(--space-6) var(--space-5) calc(var(--space-8) + env(safe-area-inset-bottom));
+}
+
+.footerLink {
+  font-size: var(--text-sm);
+  color: var(--ink-3);
+  border-radius: var(--radius-xs);
+  transition: color var(--dur-fast) var(--ease-out);
+}
+
+.footerLink:hover {
+  color: var(--ink-1);
+}
+
+/*
+ * Wide but short screens (phones in landscape, iPhone Duo open in landscape):
+ * identity and public answers on the left, the composer pinned on the right so
+ * it never scrolls out of reach.
+ */
+@media (min-width: 840px) and (max-height: 640px) {
+  .main {
+    max-width: 1080px;
+    padding-top: var(--space-6);
+  }
+
+  .content {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+    grid-template-areas:
+      "identity composer"
+      "answers composer";
+    align-items: start;
+    column-gap: var(--space-10);
+  }
+
+  .identityBlock {
+    grid-area: identity;
+  }
+
+  .composerWrap {
+    grid-area: composer;
+    position: sticky;
+    top: var(--space-4);
+    margin-top: 0;
+  }
+
+  .answersBlock {
+    grid-area: answers;
+  }
+
+  .answersBlock > section {
+    margin-top: var(--space-10);
+  }
+}
+
+/* Book posture: same arrangement, with each column sized to its side of the fold */
+@media (horizontal-viewport-segments: 2) {
+  .main {
+    max-width: none;
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  .content {
+    display: grid;
+    grid-template-columns: env(viewport-segment-width 0 0) env(viewport-segment-width 1 0);
+    column-gap: calc(env(viewport-segment-left 1 0) - env(viewport-segment-right 0 0));
+    grid-template-areas:
+      "identity composer"
+      "answers composer";
+    align-items: start;
+  }
+
+  .identityBlock,
+  .answersBlock,
+  .composerWrap {
+    padding: 0 var(--space-6);
+  }
+
+  .identityBlock {
+    grid-area: identity;
+  }
+
+  .composerWrap {
+    grid-area: composer;
+    position: sticky;
+    top: var(--space-4);
+    margin-top: 0;
+  }
+
+  .answersBlock {
+    grid-area: answers;
+  }
+}
+
+/* Laptop posture (fold across the middle): identity above the fold, composer below it */
+@media (vertical-viewport-segments: 2) {
+  .main {
+    padding-top: 0;
+  }
+
+  .content {
+    display: grid;
+    grid-template-rows: calc(env(viewport-segment-bottom 0 0) - 56px - env(safe-area-inset-top)) auto;
+    row-gap: calc(env(viewport-segment-top 0 1) - env(viewport-segment-bottom 0 0));
+  }
+
+  .identityBlock {
+    align-self: center;
+  }
+
+  .composerWrap {
+    margin-top: 0;
+  }
+}
+

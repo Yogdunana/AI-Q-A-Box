@@ -1,0 +1,138 @@
+.layout {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  background: var(--paper);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  height: calc(64px + env(safe-area-inset-top));
+  padding: env(safe-area-inset-top) max(var(--space-5), env(safe-area-inset-right)) 0
+    max(var(--space-5), env(safe-area-inset-left));
+}
+
+@media (min-width: 768px) {
+  .header {
+    height: calc(72px + env(safe-area-inset-top));
+    padding: env(safe-area-inset-top) max(var(--space-8), env(safe-area-inset-right)) 0
+      max(var(--space-8), env(safe-area-inset-left));
+  }
+}
+
+.main {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  padding: var(--space-8) var(--space-5) var(--space-16);
+}
+
+@media (min-width: 768px) {
+  .main {
+    align-items: center;
+    padding-bottom: 12vh;
+  }
+}
+
+.column {
+  width: 100%;
+  max-width: 380px;
+}
+
+.title {
+  font-size: var(--text-3xl);
+  font-weight: var(--weight-semibold);
+  letter-spacing: -0.025em;
+}
+
+.subtitle {
+  margin-top: var(--space-2);
+  margin-bottom: var(--space-8);
+  font-size: var(--text-base);
+  color: var(--ink-2);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.form > button[type="submit"] {
+  margin-top: var(--space-2);
+}
+
+.alert {
+  overflow: hidden;
+  margin-top: calc(var(--space-5) * -1);
+}
+
+.alertInner {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin-top: var(--space-5);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--danger-soft);
+  color: var(--danger);
+  font-size: var(--text-md);
+  line-height: var(--leading-snug);
+}
+
+.alertInner svg {
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.demo {
+  margin-top: var(--space-6);
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-6);
+  font-size: var(--text-sm);
+  color: var(--ink-3);
+}
+
+.divider::before,
+.divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+
+.demoHint {
+  margin-top: var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--ink-3);
+  text-align: center;
+}
+
+.footer {
+  margin-top: var(--space-8);
+  font-size: var(--text-md);
+  color: var(--ink-3);
+  text-align: center;
+}
+
+.footer a {
+  margin-left: var(--space-1);
+  color: var(--ink-1);
+  font-weight: var(--weight-medium);
+  text-decoration: underline;
+  text-decoration-color: var(--line-strong);
+  text-underline-offset: 3px;
+  transition: text-decoration-color var(--dur-fast) var(--ease-out);
+}
+
+.footer a:hover {
+  text-decoration-color: var(--ink-1);
+}
