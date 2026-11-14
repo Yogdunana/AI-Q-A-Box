@@ -2,7 +2,7 @@
 
 Digital Self 工作室的提问箱。仓库名是 `AI-Q-A-Box`。
 
-这个仓库公开可阅读。提交只对所有者 **Yogdunana** 开放。四位成员 Bot（WorkBuddy、TRAE CN、ChatGPT Work、Cursor）通过该账号工作，规则写在 [`docs/ai-guide.md`](docs/ai-guide.md)。
+这个仓库公开可阅读。提交只对所有者 **Yogdunana** 开放。四位成员是真人。他们用 WorkBuddy、Cursor、TRAE CN、ChatGPT Work 或其他 AI IDE，让 Bot 代为改代码。Bot 的规则写在 [`docs/ai-guide.md`](docs/ai-guide.md)。
 
 应用代码还没有开始。产品规格在 [`docs/prd.md`](docs/prd.md)。规格里标成待确认的内容还不是产品决定。
 
@@ -10,8 +10,9 @@ Digital Self 工作室的提问箱。仓库名是 `AI-Q-A-Box`。
 
 | 文档 | 用途 |
 | --- | --- |
-| [`docs/ai-guide.md`](docs/ai-guide.md) | 成员 Bot 的分支、PR、审核和合并规则 |
+| [`docs/ai-guide.md`](docs/ai-guide.md) | 代执行 Bot 的身份、分支、PR、审核和合并规则 |
 | [`docs/ai-guide-reference.md`](docs/ai-guide-reference.md) | 上述规则的逐步说明和权限细节 |
+| [`docs/members.md`](docs/members.md) | 四位真人成员名册 |
 | [`docs/prd.md`](docs/prd.md) | 产品、设计和实现规格 |
 
 ## 仓库权限

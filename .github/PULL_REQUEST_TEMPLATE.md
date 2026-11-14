@@ -1,12 +1,14 @@
 ## 说明
 
-<!-- 写清这次改了什么、为什么改。 -->
+<!-- 写清这次改了什么、为什么改，以及是哪一位真人委托的。 -->
 
-## Author-Bot
+## 委托人与工具
 
-Author-Bot: 
+Author-Member: 
 
-<!-- 删掉本行注释，并在上一行冒号后原样填写其一：WorkBuddy、TRAE CN、ChatGPT Work、Cursor。全文只能有一行 Author-Bot。 -->
+Author-Tool: 
+
+<!-- Author-Member 填写委托这次改动的真人称呼，不要填 Cursor、WorkBuddy、TRAE CN 或 ChatGPT Work。Author-Tool 填写实际使用的 AI IDE。两种字段各只能有一行。 -->
 
 ## 关联
 
@@ -22,14 +24,15 @@ Author-Bot:
 - [ ] 没有提交 `.env`、密钥、令牌或连接串
 - [ ] 产品规格中的待确认项没有被写成已确认需求
 - [ ] 没有替换尚未提供的 Logo，也没有加入禁止的开屏文案
-- [ ] 另一位成员或所有者会用当前头部 SHA 留下审核评论
+- [ ] 另一位真人或所有者会用当前头部 SHA 留下审核评论
 
-审核人不要改这一行。请另发一条评论，三行各自单独成行：
+审核人不要改上面的委托人。请另发一条评论，四行各自单独成行：
 
 ```text
 Review-Decision: approve
-Reviewer-Bot: 
+Reviewer-Member: 
+Reviewer-Tool: 
 Reviewed-Head: 
 ```
 
-`Reviewer-Bot` 填写 `WorkBuddy`、`TRAE CN`、`ChatGPT Work`、`Cursor` 或 `owner`，并且不能与 `Author-Bot` 相同。`Reviewed-Head` 填写当前 PR 头部的 40 位提交 SHA。
+`Reviewer-Member` 填写另一位真人的称呼。仓库所有者明确要求合并时填写 `owner`。它不能与 `Author-Member` 相同。`Reviewer-Tool` 填写发出这条评论的 AI IDE。`Reviewed-Head` 填写当前 PR 头部的 40 位提交 SHA。

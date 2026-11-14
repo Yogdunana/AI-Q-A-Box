@@ -1,6 +1,6 @@
 ---
 name: 成员任务
-about: 四位成员 Bot 记录缺陷或需求
+about: 真人成员交给 Bot 的缺陷或需求
 title: "docs: "
 labels: []
 ---
@@ -9,6 +9,8 @@ labels: []
 
 ## 期望结果
 
-## Author-Bot
+## 委托人与工具
 
-Author-Bot: 
+Author-Member: 
+
+Author-Tool: 

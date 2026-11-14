@@ -1,14 +1,14 @@
 ---
-title: Ask "Me" AI 工作流程参考
-version: 1.0.0
+title: Ask "Me" 代执行 Bot 参考
+version: 1.1.0
 repository: Yogdunana/AI-Q-A-Box
 source: 与 docs/ai-guide.md 一起使用。规则冲突时，以更严格的安全限制为准。
 last_updated: 2026-11-14
 ---
 
-# Ask "Me" AI 工作流程参考
+# Ask "Me" 代执行 Bot 参考
 
-本文件是 [`docs/ai-guide.md`](ai-guide.md) 的操作说明。产品需求以 [`docs/prd.md`](prd.md) 为准。
+本文件是 [`docs/ai-guide.md`](ai-guide.md) 的操作说明。读这份说明的是 AI IDE 里的 Bot。四位成员是真人，名册在 [`docs/members.md`](members.md)。产品需求以 [`docs/prd.md`](prd.md) 为准。
 
 ## 第 1 章：仓库与成员
 
@@ -23,18 +23,18 @@ last_updated: 2026-11-14
 | 可见性 | 公开。因为空间和额度限制，不能改为私有 |
 | 写权限 | 只有 GitHub 用户 `Yogdunana` |
 
-### 1.2 四位成员
+### 1.2 四位真人与代执行 Bot
 
-| 书写形式 | 角色 |
-| --- | --- |
-| `WorkBuddy` | 成员 Bot |
-| `TRAE CN` | 成员 Bot |
-| `ChatGPT Work` | 成员 Bot |
-| `Cursor` | 成员 Bot，包括 Cursor 中的 Cloud Agent 与 Claude |
+成员是四位真人。他们不直接编写代码。他们使用 WorkBuddy、Cursor、TRAE CN、ChatGPT Work 或其他 AI IDE，由 IDE 里的 Bot 改仓库。
 
-产品方若更换第四位的名称，同时修改 `docs/ai-guide.md` 的成员表和 `scripts/member-review-check.mjs` 里的 `MEMBERS`。两处必须一致，然后跑 `node --test scripts/member-review-check.test.mjs`。
+| 角色 | 是什么 | PR 里怎么写 |
+| --- | --- | --- |
+| 真人成员 | 委托和负责的人 | `Author-Member`、`Reviewer-Member` |
+| 代执行 Bot | Cursor、WorkBuddy、TRAE CN、ChatGPT Work 或其他 AI IDE 中的执行者 | `Author-Tool`、`Reviewer-Tool` |
 
-四位成员的 Git 流程相同。本文件不给某一位单独的免审或直推 `main` 的例外。
+Bot 不是成员，没有自己的免审资格，也不能被加成 GitHub 协作者。四位真人的流程相同。名册还没有姓名时，Bot 使用委托人在任务里给出的称呼。名册写入非空 `Member:` 之后，检查只接受这些称呼。
+
+Bot 不得编造姓名，不得把工具名填进 `Author-Member` 或 `Reviewer-Member`。没有另一位真人或所有者的明确决定，不得替他写下审核结论。
 
 ### 1.3 GitHub 身份
 
@@ -47,7 +47,7 @@ git config user.name "Yogdunana"
 git config user.email "106004584+Yogdunana@users.noreply.github.com"
 ```
 
-只改本仓库配置。运行平台如果禁止修改提交身份，就保持平台身份，并在 PR 正文写 `Author-Bot`。
+只改本仓库配置。运行平台如果禁止修改提交身份，就保持平台身份，并在 PR 正文写 `Author-Member` 和 `Author-Tool`。
 
 ## 第 2 章：Git 工作流
 
@@ -55,7 +55,7 @@ git config user.email "106004584+Yogdunana@users.noreply.github.com"
 
 从最新的 `main` 建立功能分支。
 
-WorkBuddy、TRAE CN、ChatGPT Work：
+WorkBuddy、TRAE CN、ChatGPT Work 及其他 AI IDE：
 
 | 前缀 | 用途 |
 | --- | --- |
@@ -91,40 +91,42 @@ git checkout -b docs/member-review-notes
 
 推送功能分支后打开 PR，目标分支是 `main`。使用仓库里的 PR 模板，填完每一段。
 
-正文有且只有一行：
+正文各有一行：
 
 ```text
-Author-Bot: Cursor
+Author-Member: 委托人的真人称呼
+Author-Tool: Cursor
 ```
 
-值必须是第 1.2 节的四个名称之一。有对应 Issue 时写 `Fixes #编号`。没有 Issue 的文档或仓库初始化，写明没有 Issue 的原因。
+`Author-Tool` 按实际工具填写，例如 `Cursor`、`WorkBuddy`、`TRAE CN`、`ChatGPT Work`，或其他 AI IDE 的名称。有对应 Issue 时写 `Fixes #编号`。没有 Issue 的文档或仓库初始化，写明没有 Issue 的原因。
 
 标题使用与提交说明相同的格式。
 
 ### 2.4 审核
 
-审核人是另一位成员，或所有者本人。作者不审核自己的 PR，也不代替别人填写 `Reviewer-Bot`。
+审核决定来自另一位真人，或仓库所有者。代执行的 Bot 只负责把已经作出的决定写成评论。委托这次改动的真人不能审核自己。Bot 不代替别人填写 `Reviewer-Member`。
 
-审核人在 PR 上新发一条评论。下面两行各自单独成行，且各出现一次：
+代审核的 Bot 在 PR 上新发一条评论。下面四行各自单独成行，且各出现一次：
 
 ```text
 Review-Decision: approve
-Reviewer-Bot: TRAE CN
+Reviewer-Member: 另一位真人的称呼
+Reviewer-Tool: TRAE CN
 Reviewed-Head: 0123456789abcdef0123456789abcdef01234567
 ```
 
-`Reviewed-Head` 是审核当时 PR 头部的完整 40 位提交 SHA，用 `git rev-parse HEAD` 或 PR 页面上的提交哈希取得。`Review-Decision` 只使用 `approve` 或 `request-changes`。`Reviewer-Bot` 使用四位成员名之一，或 `owner`。
+仓库所有者明确要求合并时，`Reviewer-Member` 写 `owner`，`Reviewer-Tool` 写发出评论的工具。`Reviewed-Head` 是审核当时 PR 头部的完整 40 位提交 SHA，用 `git rev-parse HEAD` 或 PR 页面上的提交哈希取得。`Review-Decision` 只使用 `approve` 或 `request-changes`。
 
 通过条件：
 
 1. 评论作者的 GitHub 登录名是 `Yogdunana`。
 2. `Reviewed-Head` 与当前 PR 头部 SHA 一致。比较的是提交内容的标识，不是 git committer 时间。本地较早创建、在批准之后才推送的提交有另一个 SHA，旧批准不会覆盖它。
 3. 针对该 SHA 的最新一条结论是 `approve`。
-4. `Reviewer-Bot` 与 `Author-Bot` 不同。
+4. `Reviewer-Member` 是另一位真人，或 `owner`。它与 `Author-Member` 不同。两位真人使用同一个 AI IDE 时，工具名可以相同。
 
 推送新提交之后，头部 SHA 改变，旧评论失效，需要重新审核。
 
-GitHub 的 Approve 按钮不能区分四位 Bot，因为他们共用 `Yogdunana` 这一个账号。分支保护里的“必需批准人数”保持为 0。跨成员审核以评论为准，由 `member-review` 检查。
+GitHub 的 Approve 按钮不能区分四位真人，因为代执行的 Bot 共用 `Yogdunana` 这一个账号。分支保护里的“必需批准人数”保持为 0。跨成员审核以评论为准，由 `member-review` 检查。
 
 检查命令：
 
@@ -233,7 +235,7 @@ GH_TOKEN="<具有 administration 权限的令牌>" scripts/lock-repository.sh --
 
 ### 3.3 协作者
 
-协作者名单只保留 `Yogdunana`。不要把四位 Bot 加成独立的写权限账号，除非产品方提供了新的 GitHub 账号，并同时更新 `scripts/member-review-check.mjs` 的 `ALLOWED_LOGINS` 和拒绝外部提交的工作流。
+协作者名单只保留 `Yogdunana`。不要把 AI IDE 或代执行 Bot 加成写权限账号。四位真人如果以后各自使用 GitHub 账号，再同时更新 `scripts/member-review-check.mjs` 的 `ALLOWED_LOGINS` 和拒绝外部提交的工作流。
 
 ## 第 4 章：产品实施边界
 
@@ -260,12 +262,12 @@ GH_TOKEN="<具有 administration 权限的令牌>" scripts/lock-repository.sh --
 
 审核人逐项看过再写 `approve`：
 
-1. `Author-Bot` 只有一行，而且是四位成员之一。
+1. `Author-Member` 是委托这次改动的真人，`Author-Tool` 是实际执行的 AI IDE。
 2. 分支符合第 2.1 节，目标是 `main`。
 3. diff 里没有 `.env`、密钥、令牌、连接串。
 4. 没有把 TBD 写成已确认需求，没有替换 Logo，没有禁止的开屏文案。
 5. 有测试或文档说明时，PR 的“验证”一节写了命令和结果。
-6. 自己的 `Reviewer-Bot` 与作者不同。
+6. `Reviewer-Member` 是另一位真人，或在所有者明确要求合并时写 `owner`。
 7. `Reviewed-Head` 写成这次看到的 PR 头部完整 SHA。之后若有新提交，这条审核自动失效。
 
 任一不满足，使用 `Review-Decision: request-changes`，并写上对应的 `Reviewed-Head`。
@@ -290,7 +292,7 @@ GH_TOKEN="<administration token>" scripts/lock-repository.sh
 
 | 编号 | 限制 | 处理 |
 | --- | --- | --- |
-| 1 | 四位 Bot 共用 `Yogdunana`，GitHub 无法从账号区分是哪一位打的字 | 用 `Author-Bot` 和 `Reviewer-Bot`。成员不得冒用别人的名字 |
+| 1 | 四位真人和他们的 Bot 共用 `Yogdunana`，GitHub 无法从账号区分是谁委托、谁审核 | 用 `Author-Member`、`Author-Tool`、`Reviewer-Member`、`Reviewer-Tool`。Bot 不得冒用真人的名字 |
 | 2 | Cloud Agent 安装令牌没有 administration 权限 | 所有者在本机执行 `scripts/lock-repository.sh` |
 | 3 | 个人公开仓库可能无法关闭 Fork | Fork 仍然不能向本仓库推送。外部 PR 会被工作流关闭 |
 | 4 | `member-review` 在进入 `main` 之前不会对已打开的 PR 生效 | 工作流合并进 `main` 后再执行 `--with-review-check` |

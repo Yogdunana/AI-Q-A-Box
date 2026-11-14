@@ -6,7 +6,7 @@ import { shouldCloseExternal } from "./reject-external-policy.mjs";
 const NOTE = [
   "本仓库公开可阅读，提交只对所有者 Yogdunana 开放。",
   "外部 Issue 和 Pull Request 会被关闭。",
-  "四位成员 Bot 请使用所有者账号在本仓库的功能分支上工作，规则见 docs/ai-guide.md。",
+  "四位真人成员请让自己的 AI Bot 使用所有者账号，在本仓库的功能分支上工作，规则见 docs/ai-guide.md。",
 ].join(" ");
 
 async function github(token, path, { method = "GET", body } = {}) {
