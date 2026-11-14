@@ -6,13 +6,14 @@ const MEMBERS = ["WorkBuddy", "TRAE CN", "ChatGPT Work", "Cursor"];
 const REVIEWERS = new Set([...MEMBERS, "owner"]);
 const ALLOWED_LOGINS = new Set(["Yogdunana"]);
 const DECISIONS = new Set(["approve", "request-changes"]);
+const SHA = /^[0-9a-f]{40}$/i;
 
 function fieldValues(text, field) {
   const pattern = new RegExp(`^${field}:\\s*(.*?)\\s*$`, "gm");
   return [...String(text ?? "").matchAll(pattern)].map((match) => match[1]);
 }
 
-export function evaluateReview({ body, comments, headCommittedAt }) {
+export function evaluateReview({ body, comments, headSha }) {
   const authors = fieldValues(body, "Author-Bot");
   if (authors.length !== 1) {
     const message = authors.length === 0
@@ -31,36 +32,44 @@ export function evaluateReview({ body, comments, headCommittedAt }) {
     };
   }
 
-  const headTime = Date.parse(headCommittedAt);
-  if (Number.isNaN(headTime)) {
+  const normalizedHead = String(headSha ?? "").toLowerCase();
+  if (!SHA.test(normalizedHead)) {
     return {
       ok: false,
-      errors: ["无法解析最新提交时间"],
+      errors: ["无法确认当前提交 SHA"],
       authorBot,
       reviewerBot: null,
     };
   }
 
   const decisions = [];
+  let sawOtherHead = false;
   for (const comment of comments ?? []) {
     if (!ALLOWED_LOGINS.has(comment.userLogin)) continue;
-    const created = Date.parse(comment.createdAt);
-    if (Number.isNaN(created) || created <= headTime) continue;
     const decisionValues = fieldValues(comment.body, "Review-Decision");
     const reviewerValues = fieldValues(comment.body, "Reviewer-Bot");
-    if (decisionValues.length !== 1 || reviewerValues.length !== 1) continue;
+    const headValues = fieldValues(comment.body, "Reviewed-Head");
+    if (decisionValues.length !== 1 || reviewerValues.length !== 1 || headValues.length !== 1) continue;
     if (!DECISIONS.has(decisionValues[0]) || !REVIEWERS.has(reviewerValues[0])) continue;
+    if (!SHA.test(headValues[0])) continue;
+    const reviewedHead = headValues[0].toLowerCase();
+    if (reviewedHead !== normalizedHead) {
+      sawOtherHead = true;
+      continue;
+    }
     decisions.push({
       decision: decisionValues[0],
       reviewerBot: reviewerValues[0],
-      created,
+      created: Date.parse(comment.createdAt) || 0,
     });
   }
 
   if (decisions.length === 0) {
     return {
       ok: false,
-      errors: ["最新提交之后还没有另一位成员或 owner 的审核结论"],
+      errors: [sawOtherHead
+        ? "审核对应的提交不是当前最新提交"
+        : "还没有另一位成员或 owner 对当前提交的审核结论"],
       authorBot,
       reviewerBot: null,
     };
@@ -71,7 +80,7 @@ export function evaluateReview({ body, comments, headCommittedAt }) {
   if (latest.decision !== "approve") {
     return {
       ok: false,
-      errors: ["最新审核结论是 request-changes"],
+      errors: ["当前提交的最新审核结论是 request-changes"],
       authorBot,
       reviewerBot: latest.reviewerBot,
     };
@@ -121,11 +130,10 @@ async function listComments(token, repo, number) {
 
 export async function reviewPullRequest({ token, repo, number }) {
   const pull = await github(token, `/repos/${repo}/pulls/${number}`);
-  const commit = await github(token, `/repos/${repo}/commits/${pull.head.sha}`);
   const comments = await listComments(token, repo, number);
   const result = evaluateReview({
     body: pull.body,
-    headCommittedAt: commit.commit?.committer?.date ?? "",
+    headSha: pull.head.sha,
     comments: comments.map((comment) => ({
       userLogin: comment.user?.login,
       body: comment.body,

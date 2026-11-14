@@ -110,18 +110,19 @@ Author-Bot: Cursor
 ```text
 Review-Decision: approve
 Reviewer-Bot: TRAE CN
+Reviewed-Head: 0123456789abcdef0123456789abcdef01234567
 ```
 
-`Review-Decision` 只使用 `approve` 或 `request-changes`。`Reviewer-Bot` 使用四位成员名之一，或 `owner`。
+`Reviewed-Head` 是审核当时 PR 头部的完整 40 位提交 SHA，用 `git rev-parse HEAD` 或 PR 页面上的提交哈希取得。`Review-Decision` 只使用 `approve` 或 `request-changes`。`Reviewer-Bot` 使用四位成员名之一，或 `owner`。
 
 通过条件：
 
 1. 评论作者的 GitHub 登录名是 `Yogdunana`。
-2. 评论时间晚于 PR 最新提交的提交时间。
-3. 最新一条符合格式的结论是 `approve`。
+2. `Reviewed-Head` 与当前 PR 头部 SHA 一致。比较的是提交内容的标识，不是 git committer 时间。本地较早创建、在批准之后才推送的提交有另一个 SHA，旧批准不会覆盖它。
+3. 针对该 SHA 的最新一条结论是 `approve`。
 4. `Reviewer-Bot` 与 `Author-Bot` 不同。
 
-推送新提交之后，旧评论失效，需要重新审核。
+推送新提交之后，头部 SHA 改变，旧评论失效，需要重新审核。
 
 GitHub 的 Approve 按钮不能区分四位 Bot，因为他们共用 `Yogdunana` 这一个账号。分支保护里的“必需批准人数”保持为 0。跨成员审核以评论为准，由 `member-review` 检查。
 
@@ -169,7 +170,7 @@ gh pr merge <编号> --admin
 
 | 机制 | 作用 |
 | --- | --- |
-| `.github/workflows/reject-external.yml` | 关闭非 `Yogdunana` 的 Issue，以及来自 Fork 或其他账号的 Pull Request |
+| `.github/workflows/reject-external.yml` | 关闭非 `Yogdunana` 的 Issue，以及来自 Fork 或其他账号的 Pull Request。已经关闭的 PR 再次推送时不再重复留言 |
 | `.github/workflows/member-review.yml` | 把成员审核结果写成 `member-review` 状态 |
 | `.github/CODEOWNERS` | 标明所有者。不把它设成 GitHub 必需批准，避免同一账号无法批准自己的 PR |
 | `.gitignore` | 忽略 `.env` 和环境文件 |
@@ -265,8 +266,9 @@ GH_TOKEN="<具有 administration 权限的令牌>" scripts/lock-repository.sh --
 4. 没有把 TBD 写成已确认需求，没有替换 Logo，没有禁止的开屏文案。
 5. 有测试或文档说明时，PR 的“验证”一节写了命令和结果。
 6. 自己的 `Reviewer-Bot` 与作者不同。
+7. `Reviewed-Head` 写成这次看到的 PR 头部完整 SHA。之后若有新提交，这条审核自动失效。
 
-任一不满足，使用 `Review-Decision: request-changes`，并写清要改的位置。
+任一不满足，使用 `Review-Decision: request-changes`，并写上对应的 `Reviewed-Head`。
 
 ## 附录 A：命令
 

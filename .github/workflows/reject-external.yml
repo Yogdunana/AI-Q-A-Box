@@ -7,6 +7,7 @@ on:
     types: [opened, reopened]
 
 permissions:
+  contents: read
   issues: write
   pull-requests: write
 
@@ -14,48 +15,23 @@ jobs:
   reject-external:
     runs-on: ubuntu-latest
     steps:
-      - name: Close submissions from outside the owning account
-        uses: actions/github-script@v7
+      - name: Checkout trusted default branch
+        uses: actions/checkout@v4
         with:
-          script: |
-            const owner = "Yogdunana";
-            const note = [
-              "本仓库公开可阅读，提交只对所有者 Yogdunana 开放。",
-              "外部 Issue 和 Pull Request 会被关闭。",
-              "四位成员 Bot 请使用所有者账号在本仓库的功能分支上工作，规则见 docs/ai-guide.md。",
-            ].join(" ");
-
-            if (context.eventName === "issues") {
-              const issue = context.payload.issue;
-              if (issue.user.login === owner) return;
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: issue.number,
-                body: note,
-              });
-              await github.rest.issues.update({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: issue.number,
-                state: "closed",
-                state_reason: "not_planned",
-              });
-              return;
-            }
-
-            const pull = context.payload.pull_request;
-            const sameRepo = pull.head.repo?.full_name === pull.base.repo.full_name;
-            if (pull.user.login === owner && sameRepo) return;
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: pull.number,
-              body: note,
-            });
-            await github.rest.pulls.update({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              pull_number: pull.number,
-              state: "closed",
-            });
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Close submissions from outside the owning account
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          EVENT_NAME: ${{ github.event_name }}
+          ACTION: ${{ github.event.action }}
+          USER_LOGIN: ${{ github.event.pull_request.user.login || github.event.issue.user.login }}
+          SAME_REPO: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.repo.full_name == github.repository }}
+          ITEM_STATE: ${{ github.event.pull_request.state || github.event.issue.state }}
+          ITEM_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
+        run: node scripts/reject-external.mjs

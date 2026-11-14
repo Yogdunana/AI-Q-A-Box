@@ -41,8 +41,8 @@ GitHub 账号只有仓库所有者 **Yogdunana**。四位 Bot 都通过这个账
 4. **禁止把仓库改成私有，也禁止把外部账号加为协作者。** 公开是因为空间和额度不够用私有仓库。外部可见，外部不可提交。
 5. **禁止提交 `.env`、密钥、令牌、连接串。** 用环境变量，并提供 `.env.example`（可以有空值，不能有真密钥）。
 6. **PR 正文有且只有一行 `Author-Bot:`，值是上表四者之一。**
-7. **合并前必须有审核。** 另一位成员，或所有者本人（`Reviewer-Bot: owner`），在最新提交之后留下 `Review-Decision: approve`。审核人不得与 `Author-Bot` 相同。作者不得替别人填写 `Reviewer-Bot`。
-8. **新的提交使旧审核失效。** 推送新提交后要重新审核。
+7. **合并前必须有审核。** 另一位成员，或所有者本人（`Reviewer-Bot: owner`），留下 `Review-Decision: approve`，并且 `Reviewed-Head` 等于当前 PR 头部的完整提交 SHA。审核人不得与 `Author-Bot` 相同。作者不得替别人填写 `Reviewer-Bot`。
+8. **新的提交使旧审核失效。** 审核绑定的是提交 SHA，不是 git 提交时间。推送新提交后要重新审核。
 9. **外部用户的 Issue 和 Pull Request 直接关闭。** 不要在外部 PR 上继续改代码或合并。`.github/workflows/reject-external.yml` 会自动关闭。
 10. **产品规格里的 TBD 不是已拍板需求。** 会改变数据、权限、付费、公开范围或品牌的内容，先问产品方。
 11. **现有 Logo 未入库前，不得绘制替代 Logo，不得改比例、改字标。** 开屏页禁止出现“AI帮箱主回复”“AI 代回复”“让 AI 替你回答”或同义文案。
@@ -78,9 +78,10 @@ flowchart LR
 ```text
 Review-Decision: approve
 Reviewer-Bot: TRAE CN
+Reviewed-Head: <当前 PR 头部的 40 位提交 SHA>
 ```
 
-`Reviewer-Bot` 还可以是 `WorkBuddy`、`ChatGPT Work`、`Cursor` 或 `owner`。需要修改时把 `approve` 写成 `request-changes`。只有最新一条、且晚于最新提交的 `approve` 才算通过。四位 Bot 共用一个 GitHub 账号，GitHub 的 Approve 按钮不能把“另一位成员”记成不同的人，所以以这条评论为准。
+`Reviewer-Bot` 还可以是 `WorkBuddy`、`ChatGPT Work`、`Cursor` 或 `owner`。需要修改时把 `approve` 写成 `request-changes`。只有 `Reviewed-Head` 与当前头部 SHA 完全一致的最新一条 `approve` 才算通过。git 的 author/committer 时间不参与判断，因此先在本地做好、再在批准之后推上来的提交不会沿用旧批准。四位 Bot 共用一个 GitHub 账号，GitHub 的 Approve 按钮不能把“另一位成员”记成不同的人，所以以这条评论为准。
 
 ### 公开仓库权限
 
@@ -95,7 +96,7 @@ Reviewer-Bot: TRAE CN
 | 情况 | 处理 |
 | --- | --- |
 | 推送 `main` 被拒绝 | 改推功能分支，再开 PR |
-| `member-review` 失败 | 看检查说明。补 `Author-Bot`，或请另一位成员在最新提交之后重新审核 |
+| `member-review` 失败 | 看检查说明。补 `Author-Bot`，或请另一位成员把 `Reviewed-Head` 写成当前头部 SHA 后重新审核 |
 | 外部 PR 被关闭 | 这是预期结果。不要重新打开 |
 | 合并提示不允许 merge commit | 改用 `gh pr merge <编号> --squash --delete-branch` |
 | 保护规则丢失 | 所有者重新执行 `scripts/lock-repository.sh`。其他人和 Bot 只报告，不自己删、不加保护 |
