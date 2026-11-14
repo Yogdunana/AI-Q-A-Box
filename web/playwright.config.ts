@@ -16,7 +16,7 @@ export default defineConfig({
   },
   projects: [
     { name: "desktop", use: { ...devices["Desktop Chrome"], channel, viewport: { width: 1440, height: 900 } } },
-    { name: "mobile", use: { ...devices["Pixel 7"], channel } },
+    { name: "mobile", use: { ...devices["Pixel 7"], channel }, testIgnore: /devices\.spec\.ts/ },
   ],
   webServer: {
     command: `npx vite --host 127.0.0.1 --port ${PORT} --strictPort`,
