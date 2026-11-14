@@ -1,0 +1,9 @@
+.page {
+  min-height: 100%;
+}
+
+@media (min-width: 768px) {
+  .page > article > div:first-child {
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  }
+}

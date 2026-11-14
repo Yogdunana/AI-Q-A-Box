@@ -1,0 +1,163 @@
+/*
+ * Ask "Me" design tokens.
+ *
+ * The accent hue is provisional: docs/prd.md (6.2, 7.1) asks for brand colours
+ * to be derived from the existing logo, which has not been committed yet.
+ * Change --accent-* here once the logo is available; nothing else hardcodes it.
+ */
+:root {
+  /* Neutrals: warm paper and ink */
+  --paper: #fbfaf7;
+  --surface: #ffffff;
+  --surface-sunken: #f5f3ef;
+  --surface-hover: #f3f1ec;
+  --surface-active: #ece9e3;
+  --surface-inverse: #1b1a17;
+
+  --ink-1: #1b1a17;
+  --ink-2: #4f4b44;
+  --ink-3: #736e65;
+  --ink-4: #a29d93;
+  --ink-inverse: #faf9f6;
+
+  --line: #e9e6e0;
+  --line-strong: #dbd7cf;
+  --line-subtle: #f0eee9;
+
+  /* Brand accent: muted vermilion */
+  --accent: #b5442a;
+  --accent-hover: #a23b23;
+  --accent-active: #8f331e;
+  --accent-soft: #fbefea;
+  --accent-soft-strong: #f6dfd6;
+  --accent-ink: #92361f;
+  --accent-ring: rgba(181, 68, 42, 0.32);
+
+  /* AI drafts get their own hue so they never read as the owner's words */
+  --ai: #4b55b8;
+  --ai-soft: #f1f2fb;
+  --ai-line: #dcdff4;
+  --ai-ink: #3a4399;
+
+  /* Status */
+  --status-new: var(--accent);
+  --status-reviewing: #a3680f;
+  --status-reviewing-soft: #fbf3e4;
+  --status-drafted: var(--ai);
+  --status-drafted-soft: var(--ai-soft);
+  --status-answered: #2c7653;
+  --status-answered-soft: #eaf5ef;
+  --status-published: #1d6f73;
+  --status-published-soft: #e6f3f3;
+  --status-flagged: #b8322f;
+  --status-flagged-soft: #fbecea;
+  --status-muted: #7b766d;
+  --status-muted-soft: #f1efea;
+
+  --danger: #b8322f;
+  --danger-hover: #a12a27;
+  --danger-soft: #fbecea;
+  --success: #2c7653;
+  --success-soft: #eaf5ef;
+
+  /* Typography */
+  --font-sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+    "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", "Noto Sans CJK SC", "Helvetica Neue",
+    Arial, sans-serif;
+  --font-serif: "Iowan Old Style", "Charter", "Songti SC", "Source Han Serif SC", "Noto Serif SC",
+    "Noto Serif CJK SC", "STSong", Georgia, "Times New Roman", serif;
+  --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+
+  --text-2xs: 0.6875rem; /* 11 */
+  --text-xs: 0.75rem; /* 12 */
+  --text-sm: 0.8125rem; /* 13 */
+  --text-md: 0.875rem; /* 14 */
+  --text-base: 0.9375rem; /* 15 */
+  --text-lg: 1.0625rem; /* 17 */
+  --text-xl: 1.25rem; /* 20 */
+  --text-2xl: 1.5rem; /* 24 */
+  --text-3xl: 1.875rem; /* 30 */
+  --text-4xl: 2.375rem; /* 38 */
+  --text-5xl: 3rem; /* 48 */
+  --text-6xl: 3.75rem; /* 60 */
+
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+
+  --leading-tight: 1.2;
+  --leading-snug: 1.4;
+  --leading-normal: 1.6;
+  --leading-relaxed: 1.75;
+
+  /* Spacing (4px grid) */
+  --space-0-5: 2px;
+  --space-1: 4px;
+  --space-1-5: 6px;
+  --space-2: 8px;
+  --space-2-5: 10px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-20: 80px;
+  --space-24: 96px;
+
+  /* Radii */
+  --radius-xs: 6px;
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --radius-full: 999px;
+
+  /* Elevation */
+  --shadow-xs: 0 1px 0 rgba(27, 26, 23, 0.04);
+  --shadow-sm: 0 1px 2px rgba(27, 26, 23, 0.06), 0 0 0 1px rgba(27, 26, 23, 0.035);
+  --shadow-md: 0 1px 2px rgba(27, 26, 23, 0.04), 0 4px 14px -4px rgba(27, 26, 23, 0.1),
+    0 0 0 1px rgba(27, 26, 23, 0.04);
+  --shadow-lg: 0 2px 4px -2px rgba(27, 26, 23, 0.06), 0 16px 36px -10px rgba(27, 26, 23, 0.2),
+    0 0 0 1px rgba(27, 26, 23, 0.06);
+  --shadow-xl: 0 4px 8px -4px rgba(27, 26, 23, 0.08), 0 28px 60px -16px rgba(27, 26, 23, 0.28),
+    0 0 0 1px rgba(27, 26, 23, 0.06);
+  --shadow-inset: inset 0 1px 2px rgba(27, 26, 23, 0.05);
+
+  --focus-ring: 0 0 0 2px var(--paper), 0 0 0 4px var(--accent-ring);
+
+  /* Icons */
+  --icon-xs: 14px;
+  --icon-sm: 16px;
+  --icon-md: 18px;
+  --icon-lg: 20px;
+  --icon-xl: 24px;
+
+  /* Motion (mirrors src/lib/motion.ts) */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-in: cubic-bezier(0.55, 0, 1, 0.45);
+  --dur-instant: 100ms;
+  --dur-fast: 160ms;
+  --dur-base: 220ms;
+  --dur-slow: 320ms;
+
+  /* Layout */
+  --sidebar-width: 244px;
+  --sidebar-rail: 68px;
+  --topbar-height: 56px;
+  --tabbar-height: 60px;
+  --content-max: 1120px;
+  --reading-max: 640px;
+
+  /* Breakpoints (reference only; CSS media queries use literal values)
+     sm 640, md 768, lg 1024, xl 1280 */
+
+  --z-sticky: 20;
+  --z-nav: 30;
+  --z-popover: 50;
+  --z-overlay: 60;
+  --z-toast: 70;
+}

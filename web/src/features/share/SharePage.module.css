@@ -1,0 +1,229 @@
+.welcomeWrap {
+  overflow: hidden;
+}
+
+.welcome {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  margin-bottom: var(--space-8);
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--success-soft);
+  box-shadow: inset 0 0 0 1px rgba(44, 118, 83, 0.12);
+}
+
+.welcomeIcon {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--success);
+  flex-shrink: 0;
+}
+
+.welcomeIcon svg {
+  width: 17px;
+  height: 17px;
+}
+
+.welcomeText {
+  flex: 1;
+  min-width: 0;
+  padding-top: 2px;
+}
+
+.welcomeTitle {
+  font-weight: var(--weight-semibold);
+  color: var(--ink-1);
+}
+
+.welcomeBody {
+  margin-top: 2px;
+  font-size: var(--text-md);
+  color: var(--ink-2);
+}
+
+.paused {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: calc(var(--space-4) * -1) 0 var(--space-6);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--status-reviewing-soft);
+  color: var(--status-reviewing);
+  font-size: var(--text-md);
+}
+
+.paused svg {
+  width: 16px;
+  height: 16px;
+}
+
+.pausedLink {
+  margin-left: auto;
+  font-weight: var(--weight-medium);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.grid {
+  display: grid;
+  gap: var(--space-10);
+}
+
+@media (min-width: 1024px) {
+  .grid {
+    grid-template-columns: minmax(0, 1fr) 360px;
+    align-items: start;
+    gap: var(--space-12);
+  }
+}
+
+.mainCol {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-10);
+  min-width: 0;
+}
+
+.label {
+  font-size: var(--text-xs);
+  color: var(--ink-3);
+}
+
+.linkCard {
+  padding: var(--space-6);
+}
+
+@media (min-width: 768px) {
+  .linkCard {
+    padding: var(--space-8);
+  }
+}
+
+.url {
+  margin-top: var(--space-2);
+  font-size: clamp(1.25rem, 1rem + 1.4vw, 1.875rem);
+  font-weight: var(--weight-semibold);
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.urlHost {
+  color: var(--ink-3);
+  font-weight: var(--weight-regular);
+}
+
+.urlSlug {
+  color: var(--ink-1);
+}
+
+.linkActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-6);
+}
+
+@media (max-width: 479px) {
+  .linkActions > * {
+    flex: 1 1 100%;
+  }
+}
+
+.sectionTitle {
+  margin-bottom: var(--space-3);
+  font-size: var(--text-base);
+  font-weight: var(--weight-semibold);
+}
+
+.templateList {
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.template {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-3) var(--space-4) var(--space-5);
+}
+
+.template + .template {
+  box-shadow: inset 0 1px 0 var(--line-subtle);
+}
+
+.templateBody {
+  flex: 1;
+  min-width: 0;
+}
+
+.templateLabel {
+  font-size: var(--text-xs);
+  color: var(--ink-3);
+}
+
+.templateText {
+  margin-top: 2px;
+  font-size: var(--text-md);
+  color: var(--ink-1);
+  line-height: var(--leading-normal);
+  overflow-wrap: anywhere;
+}
+
+.previewCol {
+  min-width: 0;
+}
+
+.device {
+  margin-top: var(--space-3);
+  border-radius: var(--radius-xl);
+  background: var(--paper);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+}
+
+.deviceBar {
+  display: flex;
+  justify-content: center;
+  padding: var(--space-2-5) var(--space-4);
+  background: var(--surface-sunken);
+  border-bottom: 1px solid var(--line);
+}
+
+.deviceUrl {
+  max-width: 100%;
+  padding: 3px var(--space-3);
+  border-radius: var(--radius-full);
+  background: var(--surface);
+  font-size: var(--text-2xs);
+  color: var(--ink-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.deviceBody {
+  padding: var(--space-6) var(--space-5) var(--space-8);
+}
+
+.fakeInput {
+  margin-top: var(--space-5);
+  min-height: 88px;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  font-size: var(--text-sm);
+  color: var(--ink-4);
+}

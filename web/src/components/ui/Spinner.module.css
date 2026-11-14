@@ -1,0 +1,24 @@
+.spinner {
+  animation: spin 700ms linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    /* Keep the spinner legible as "in progress" without continuous rotation */
+    animation: pulse 1.6s ease-in-out infinite !important;
+    animation-duration: 1.6s !important;
+    animation-iteration-count: infinite !important;
+  }
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.45;
+  }
+}

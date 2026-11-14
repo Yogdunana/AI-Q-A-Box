@@ -1,0 +1,70 @@
+.identity {
+  min-width: 0;
+}
+
+.owner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.ownerText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.35;
+}
+
+.ownerName {
+  font-size: var(--text-base);
+  font-weight: var(--weight-semibold);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.handle {
+  font-size: var(--text-sm);
+  color: var(--ink-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.title {
+  margin-top: var(--space-6);
+  font-family: var(--font-serif);
+  font-size: clamp(1.875rem, 1.4rem + 2vw, 2.5rem);
+  font-weight: var(--weight-semibold);
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+}
+
+.description {
+  margin-top: var(--space-3);
+  font-size: var(--text-base);
+  line-height: var(--leading-relaxed);
+  color: var(--ink-2);
+  overflow-wrap: anywhere;
+  white-space: pre-line;
+}
+
+.sm .ownerName {
+  font-size: var(--text-md);
+}
+
+.sm .handle {
+  font-size: var(--text-xs);
+}
+
+.sm .title {
+  margin-top: var(--space-4);
+  font-size: var(--text-2xl);
+}
+
+.sm .description {
+  margin-top: var(--space-2);
+  font-size: var(--text-md);
+  line-height: var(--leading-normal);
+}
