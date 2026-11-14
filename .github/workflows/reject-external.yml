@@ -47,6 +47,7 @@ jobs:
             const pull = context.payload.pull_request;
             const sameRepo = pull.head.repo?.full_name === pull.base.repo.full_name;
             if (pull.user.login === owner && sameRepo) return;
+            if (pull.state === "closed") return;
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,

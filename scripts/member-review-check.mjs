@@ -12,7 +12,29 @@ function fieldValues(text, field) {
   return [...String(text ?? "").matchAll(pattern)].map((match) => match[1]);
 }
 
-export function evaluateReview({ body, comments, headCommittedAt }) {
+// 截止时间是该提交最后一次出现在 PR 时间线之前的事件时间。
+// git committer date 是本地提交时间，晚推送的旧提交会比它更早，不能用来判断审核是否还有效。
+export function headLandedAt(events, headSha) {
+  const sha = String(headSha ?? "").toLowerCase();
+  if (!sha) return null;
+  const list = Array.isArray(events) ? events : [];
+  let index = -1;
+  for (let i = 0; i < list.length; i++) {
+    const event = list[i];
+    if (event?.event === "committed" && String(event.sha ?? "").toLowerCase() === sha) {
+      index = i;
+    }
+  }
+  if (index < 0) return null;
+  for (let i = index - 1; i >= 0; i--) {
+    const event = list[i];
+    const stamp = event?.created_at || event?.submitted_at;
+    if (stamp) return stamp;
+  }
+  return "1970-01-01T00:00:00Z";
+}
+
+export function evaluateReview({ body, comments, headLandedAt: landedAt }) {
   const authors = fieldValues(body, "Author-Bot");
   if (authors.length !== 1) {
     const message = authors.length === 0
@@ -31,7 +53,16 @@ export function evaluateReview({ body, comments, headCommittedAt }) {
     };
   }
 
-  const headTime = Date.parse(headCommittedAt);
+  if (landedAt == null || landedAt === "") {
+    return {
+      ok: false,
+      errors: ["无法确认最新提交何时进入 Pull Request"],
+      authorBot,
+      reviewerBot: null,
+    };
+  }
+
+  const headTime = Date.parse(landedAt);
   if (Number.isNaN(headTime)) {
     return {
       ok: false,
@@ -105,27 +136,27 @@ async function github(token, path) {
   return payload;
 }
 
-async function listComments(token, repo, number) {
-  const comments = [];
+async function listPaged(token, path) {
+  const items = [];
   let page = 1;
   for (;;) {
     const batch = await github(
       token,
-      `/repos/${repo}/issues/${number}/comments?per_page=100&page=${page}`,
+      `${path}${path.includes("?") ? "&" : "?"}per_page=100&page=${page}`,
     );
-    comments.push(...batch);
-    if (batch.length < 100) return comments;
+    items.push(...batch);
+    if (batch.length < 100) return items;
     page += 1;
   }
 }
 
 export async function reviewPullRequest({ token, repo, number }) {
   const pull = await github(token, `/repos/${repo}/pulls/${number}`);
-  const commit = await github(token, `/repos/${repo}/commits/${pull.head.sha}`);
-  const comments = await listComments(token, repo, number);
+  const comments = await listPaged(token, `/repos/${repo}/issues/${number}/comments`);
+  const timeline = await listPaged(token, `/repos/${repo}/issues/${number}/timeline`);
   const result = evaluateReview({
     body: pull.body,
-    headCommittedAt: commit.commit?.committer?.date ?? "",
+    headLandedAt: headLandedAt(timeline, pull.head.sha),
     comments: comments.map((comment) => ({
       userLogin: comment.user?.login,
       body: comment.body,
