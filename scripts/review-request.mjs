@@ -8,6 +8,11 @@ export function hasReviewRequest(comments) {
   return (comments ?? []).some((comment) => REQUEST.test(String(comment.body ?? "")));
 }
 
+export function reminderFailureIsFatal(error) {
+  const message = String(error?.message ?? error);
+  return !/Resource not accessible by integration|\b403\b/.test(message);
+}
+
 export function reminderBody() {
   return [
     "Review-Request: owner",
@@ -70,8 +75,13 @@ async function main() {
     console.error("需要 GH_TOKEN、REPO 和 PR_NUMBER");
     process.exit(2);
   }
-  const result = await ensureReviewRequest({ token, repo, number });
-  console.log(result.posted ? "已提醒所有者调用审核 agent" : "提醒已存在，不再重复发送");
+  try {
+    const result = await ensureReviewRequest({ token, repo, number });
+    console.log(result.posted ? "已提醒所有者调用审核 agent" : "提醒已存在，不再重复发送");
+  } catch (error) {
+    if (reminderFailureIsFatal(error)) throw error;
+    console.log(`无法发送提醒：${error.message}。审核检查继续。`);
+  }
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
