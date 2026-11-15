@@ -1,0 +1,26 @@
+{
+  "name": "ask-me-server",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "engines": {
+    "node": ">=22.13"
+  },
+  "scripts": {
+    "dev": "node --experimental-sqlite --experimental-strip-types --disable-warning=ExperimentalWarning --watch src/index.ts",
+    "start": "node --experimental-sqlite --experimental-strip-types --disable-warning=ExperimentalWarning src/index.ts",
+    "migrate": "node --experimental-sqlite --experimental-strip-types --disable-warning=ExperimentalWarning src/migrate-cli.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "node --experimental-sqlite --experimental-strip-types --disable-warning=ExperimentalWarning --test test/*.test.ts"
+  },
+  "dependencies": {
+    "@fastify/cookie": "^11.0.2",
+    "@fastify/cors": "^11.1.0",
+    "@fastify/helmet": "^13.0.2",
+    "fastify": "^5.6.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.0",
+    "typescript": "~7.0.2"
+  }
+}

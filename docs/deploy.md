@@ -34,7 +34,7 @@
 mv /var/www/ai-box /var/www/ai-box.bad && mv /var/www/ai-box.prev /var/www/ai-box
 ```
 
-后端还没有接入，线上前端运行在演示模式，数据只保存在访问者自己的浏览器里。
+`server/` 里已经有 API，但还没有部署到这台机器。线上前端仍是演示模式，数据只保存在访问者自己的浏览器里。接入时再改 Nginx，把 `/api` 反代到本机后端进程。不要把数据库文件或密钥放进这个静态站点目录，也不要让前端发布工作流去发布它们。
 
 登录凭据由所有者保管。不要把 root 密码、SSH 私钥或 `/etc/letsencrypt` 里的私钥写入仓库、Pull Request、文档或命令输出。
 

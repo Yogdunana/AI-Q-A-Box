@@ -1,6 +1,6 @@
 # Ask "Me" 前端
 
-`web/` 是 Ask "Me" 的前端应用：开屏页、公开提问页、箱主工作台（概览、收件箱、问题详情与 AI 草稿、分享、设置）以及登录注册。后端尚未开始，前端通过一层 API 契约与后端解耦，在后端就绪前使用浏览器本地的 mock 实现运行完整流程。
+`web/` 是 Ask "Me" 的前端应用：开屏页、公开提问页、箱主工作台（概览、收件箱、问题详情与 AI 草稿、分享、设置）以及登录注册。后端在 [`server/`](../server/)。前端默认仍用浏览器本地的 mock；`VITE_API_MODE=http` 时请求后端。
 
 ## 技术栈
 
@@ -37,8 +37,8 @@ npm run dev          # http://localhost:5173
 
 | 变量 | 说明 |
 | --- | --- |
-| `VITE_API_MODE` | `mock`（默认）或 `http`。后端就绪后改为 `http` |
-| `VITE_API_BASE_URL` | `http` 模式下的 API 根地址，默认同源 |
+| `VITE_API_MODE` | `mock`（默认）或 `http`。`http` 使用 `server/` |
+| `VITE_API_BASE_URL` | `http` 模式下的 API 根地址。留空时走同源 `/api`，开发服务器会代理到 `127.0.0.1:8787` |
 
 前端不持有任何密钥。AI 调用、提示词组装、限流都应在服务端完成（PRD §8.3、§11.2）。
 
@@ -104,12 +104,11 @@ e2e/              Playwright 测试
 | `POST` | `/api/me/answers/{id}/publish` | PRD。请求体 `{ visibility }`，私密为发送、公开为发布 |
 | `GET` | `/api/boxes/{slug}/answers` | 前端补充：公开回答列表（P1，受开关控制） |
 
-需要后端确认的差异：
+后端已经按这张表实现。和字面规格不同的地方写在根 README 的待确认事项里：
 
-1. 标为“前端补充”的接口，以及 `counts`、`QuestionDetail` 的响应结构。
-2. 提问箱上的 `reply_style`（语气、篇幅、语言、关于你），这是唯一会进入模型上下文的箱主资料。
-3. 错误响应体 `{ message, fields }`，前端会把 `fields` 显示在对应输入框下。
-4. 公开页 slug 不存在与已停用都返回 404，不区分（PRD §12）。
+1. 错误响应体是 `{ message, fields }`，`fields` 显示在对应输入框下。
+2. 暂停中的箱子仍返回公开资料，并用 `accepting: false` 让页面显示暂停提示。不存在和保留 slug 才返回同样的 404。
+3. 回复 JSON 多一个 `delivery_state`：`draft`、`private_reserved` 或 `published`。旧字段保持不变。
 
 ## Mock 模式
 
