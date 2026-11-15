@@ -1,7 +1,7 @@
 import cookie from "@fastify/cookie";
 import cors from "@fastify/cors";
 import helmet from "@fastify/helmet";
-import Fastify, { LogController, type FastifyInstance } from "fastify";
+import Fastify, { LogController, type FastifyInstance, type FastifyServerOptions } from "fastify";
 import type { AiProvider } from "./ai/types.ts";
 import type { Config } from "./config.ts";
 import type { AppContext } from "./context.ts";
@@ -10,6 +10,7 @@ import { forbidden } from "./errors.ts";
 import { registerAuthRoutes } from "./routes/auth.ts";
 import { registerOwnerRoutes } from "./routes/owner.ts";
 import { registerPublicRoutes } from "./routes/public.ts";
+import { registerReplyRoutes } from "./routes/reply.ts";
 import type { DatabaseSync } from "node:sqlite";
 
 export interface BuildOptions {
@@ -18,6 +19,7 @@ export interface BuildOptions {
   now?: () => number;
   ai: AiProvider;
   extraRoutes?: (app: FastifyInstance, ctx: AppContext) => void;
+  logger?: FastifyServerOptions["logger"];
 }
 
 export function buildApp(options: BuildOptions): FastifyInstance {
@@ -33,12 +35,20 @@ export function buildApp(options: BuildOptions): FastifyInstance {
     requestTimeout: ctx.config.requestTimeoutMs,
     logController: new LogController({ disableRequestLogging: true }),
     logger:
-      ctx.config.env === "test"
+      options.logger ??
+      (ctx.config.env === "test"
         ? false
         : {
             level: "info",
-            redact: ["req.headers.cookie", "req.headers.authorization", "res.headers.set-cookie"],
-          },
+            redact: [
+              "req.headers.cookie",
+              "req.headers.authorization",
+              "req.body",
+              "req.body.token",
+              "req.body.view_token",
+              "res.headers.set-cookie",
+            ],
+          }),
   });
 
   app.addHook("onRequest", async (request, reply) => {
@@ -89,8 +99,14 @@ export function buildApp(options: BuildOptions): FastifyInstance {
     });
     await instance.register(cookie);
     instance.get("/api/health", async () => ({ ok: true }));
+    instance.get("/api/capabilities", async () => ({
+      public_replies_enabled: ctx.config.publicRepliesEnabled,
+      asker_access: "link",
+      notifications: "none",
+    }));
     registerAuthRoutes(instance, ctx);
     registerPublicRoutes(instance, ctx);
+    registerReplyRoutes(instance, ctx);
     registerOwnerRoutes(instance, ctx);
     options.extraRoutes?.(instance, ctx);
   });

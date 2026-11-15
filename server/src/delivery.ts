@@ -7,21 +7,23 @@ export interface DeliveryDecision {
   published_at: string | null;
   sent_at: string | null;
   published_content: string | null;
+  confirmed_at: string;
   question_status: "published" | "answered_private";
 }
 
 /**
- * Owner confirmation is the only way into private_reserved or published.
- * sent_at records that confirmation. It does not mean a message was delivered:
- * the MVP does not collect an asker contact, so there is nothing to send.
- * Public text is copied into published_content. Later edits of the draft do
- * not change that copy until the owner confirms again.
+ * Owner confirmation is the only way a reply becomes visible to the asker.
+ * sent_at is the private confirmation time. It is not a delivery or read time.
+ * The asker-visible text is copied from the saved draft in the same statement
+ * that records confirmation. Later draft edits do not change that copy.
+ * Public confirmation also requires the asker's own consent.
  */
 export function decideDelivery(input: {
   visibility: ReplyVisibility;
   content: string;
   now: string;
   publicRepliesEnabled: boolean;
+  publicConsent: boolean;
 }): DeliveryDecision {
   if (!input.content.trim()) {
     throw validation({ content: "回复内容不能为空。" });
@@ -30,12 +32,16 @@ export function decideDelivery(input: {
     if (!input.publicRepliesEnabled) {
       throw forbidden("公开发布还没有开放，这次没有公开。");
     }
+    if (!input.publicConsent) {
+      throw forbidden("提问者没有同意公开，不能发布到提问页。");
+    }
     return {
       delivery_state: "published",
       visibility: "public",
       published_at: input.now,
       sent_at: null,
       published_content: input.content,
+      confirmed_at: input.now,
       question_status: "published",
     };
   }
@@ -45,6 +51,7 @@ export function decideDelivery(input: {
     published_at: null,
     sent_at: input.now,
     published_content: null,
+    confirmed_at: input.now,
     question_status: "answered_private",
   };
 }

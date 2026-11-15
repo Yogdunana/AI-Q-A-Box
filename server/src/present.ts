@@ -29,6 +29,7 @@ export function questionJson(question: QuestionRecord) {
     status: question.status,
     risk_level: question.risk_level,
     submitted_at: question.submitted_at,
+    public_consent: question.public_consent,
   };
 }
 
@@ -43,6 +44,10 @@ export function answerJson(answer: AnswerRecord) {
     updated_at: answer.updated_at,
     published_at: answer.published_at,
     sent_at: answer.sent_at,
+    confirmed_content: answer.confirmed_content,
+    confirmed_at: answer.confirmed_at,
+    seen_at: answer.seen_at,
+    draft_revision: answer.draft_revision,
   };
 }
 

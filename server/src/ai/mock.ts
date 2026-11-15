@@ -1,5 +1,5 @@
 import type { ReplyStyle } from "../constants.ts";
-import { AiAborted, type AiProvider, type DraftInput } from "./types.ts";
+import { AiAborted, type AiProvider, type DraftInput, type DraftResult } from "./types.ts";
 
 /** Offline stand-in. Brackets mark what the owner still has to write; notes are not copied in. */
 export function createMockProvider(): AiProvider {
@@ -8,9 +8,13 @@ export function createMockProvider(): AiProvider {
     model: "mock-draft-v1",
     generate(input, signal) {
       if (signal.aborted) throw new AiAborted();
-      return Promise.resolve(composeDraft(input));
+      return Promise.resolve(draftResult(composeDraft(input)));
     },
   };
+}
+
+function draftResult(text: string): DraftResult {
+  return { text, inputTokens: null, outputTokens: null };
 }
 
 function composeDraft(input: DraftInput): string {

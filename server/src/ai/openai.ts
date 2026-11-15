@@ -1,6 +1,6 @@
 import { ANSWER_MAX } from "../constants.ts";
 import { buildMessages } from "./prompt.ts";
-import { AiAborted, AiFailure, type AiProvider } from "./types.ts";
+import { AiAborted, AiFailure, type AiProvider, type DraftResult } from "./types.ts";
 
 export function createOpenAiProvider(options: {
   apiKey: string;
@@ -27,6 +27,7 @@ export function createOpenAiProvider(options: {
           body: JSON.stringify({
             model: options.model,
             temperature: 0.4,
+            max_tokens: input.maxOutputTokens,
             messages: buildMessages(input),
           }),
           signal: combined,
@@ -43,9 +44,23 @@ export function createOpenAiProvider(options: {
       } catch {
         throw new AiFailure();
       }
-      return clip(readContent(payload));
+      return { text: clip(readContent(payload)), ...readUsage(payload) };
     },
   };
+}
+
+function readUsage(payload: unknown): Pick<DraftResult, "inputTokens" | "outputTokens"> {
+  if (typeof payload !== "object" || payload === null) return { inputTokens: null, outputTokens: null };
+  const usage = (payload as { usage?: unknown }).usage;
+  if (typeof usage !== "object" || usage === null) return { inputTokens: null, outputTokens: null };
+  return {
+    inputTokens: finiteCount((usage as { prompt_tokens?: unknown }).prompt_tokens),
+    outputTokens: finiteCount((usage as { completion_tokens?: unknown }).completion_tokens),
+  };
+}
+
+function finiteCount(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0 ? Math.round(value) : null;
 }
 
 function readContent(payload: unknown): string {

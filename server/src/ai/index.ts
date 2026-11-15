@@ -16,7 +16,8 @@ export function createAiProvider(config: Config): AiProvider {
   return createMockProvider();
 }
 
-export { AiAborted, AiFailure, type AiProvider, type DraftInput } from "./types.ts";
+export { maxOutputTokens } from "./limits.ts";
+export { AiAborted, AiFailure, type AiProvider, type DraftInput, type DraftResult } from "./types.ts";
 export { createMockProvider } from "./mock.ts";
 export { createOpenAiProvider } from "./openai.ts";
 export { buildMessages, systemPrompt } from "./prompt.ts";

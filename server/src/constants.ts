@@ -42,6 +42,7 @@ export const RESERVED_SLUGS = new Set([
   "public",
   "www",
   "submitted",
+  "reply",
 ]);
 
 export const QUESTION_STATUSES = [
@@ -99,3 +100,14 @@ export interface ReplyStyle {
 
 export const COOKIE_NAME = "askme_session";
 export const PROMPT_VERSION = "askme-draft-2026-11-15";
+/** 32 bytes of base64url. Shorter values are rejected instead of being stored. */
+export const VIEW_TOKEN_PATTERN = /^[A-Za-z0-9_-]{43}$/;
+
+export const AI_WRITABLE_STATUSES = [
+  "submitted",
+  "reviewing",
+  "drafted",
+  "answered_private",
+  "published",
+  "flagged",
+] as const;

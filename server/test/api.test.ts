@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { randomBytes } from "node:crypto";
 import { afterEach, describe, it } from "node:test";
 import type { FastifyInstance } from "fastify";
 import type { AiProvider } from "../src/ai/index.ts";
@@ -154,6 +155,7 @@ describe("ask me api", () => {
         is_anonymous: true,
         asker_display_name: "不要保存这个称呼",
         idempotency_key: "key-1",
+        view_token: viewToken("key-1"),
       },
     });
     assert.equal(submitted.statusCode, 200);
@@ -161,15 +163,12 @@ describe("ask me api", () => {
     const replay = await ctx.app.inject({
       method: "POST",
       url: "/api/boxes/ning/questions",
-      payload: { content: "另一段内容", is_anonymous: true, idempotency_key: "key-1" },
+      payload: { content: "另一段内容", is_anonymous: true, idempotency_key: "key-1", view_token: viewToken("key-1") },
     });
     assert.equal(replay.json().id, submitted.json().id);
-    const duplicate = await ctx.app.inject({
-      method: "POST",
-      url: "/api/boxes/ning/questions",
-      payload: { content: SECRET_QUESTION, is_anonymous: true, idempotency_key: "key-2" },
-    });
-    assert.equal(duplicate.json().id, submitted.json().id);
+    const duplicate = await submit(ctx.app, SECRET_QUESTION, "key-2");
+    assert.equal(duplicate.statusCode, 409);
+    assert.equal(duplicate.json().id, undefined);
     assert.equal(count(ctx, "questions"), 1);
 
     const list = await ctx.app.inject({ method: "GET", url: "/api/me/questions", headers: { cookie: owner.cookie } });
@@ -206,14 +205,20 @@ describe("ask me api", () => {
     const missingName = await ctx.app.inject({
       method: "POST",
       url: "/api/boxes/ning/questions",
-      payload: { content: "没有称呼的问题", is_anonymous: true, idempotency_key: "name-1" },
+      payload: { content: "没有称呼的问题", is_anonymous: true, idempotency_key: "name-1", view_token: viewToken("name-1") },
     });
     assert.equal(missingName.statusCode, 422);
     assert.equal(missingName.json().fields.asker_display_name, "请留下一个称呼。");
     const named = await ctx.app.inject({
       method: "POST",
       url: "/api/boxes/ning/questions",
-      payload: { content: "留下称呼的问题", is_anonymous: false, asker_display_name: "阿远", idempotency_key: "name-2" },
+      payload: {
+        content: "留下称呼的问题",
+        is_anonymous: false,
+        asker_display_name: "阿远",
+        idempotency_key: "name-2",
+        view_token: viewToken("name-2"),
+      },
     });
     assert.equal(named.statusCode, 200);
 
@@ -228,7 +233,13 @@ describe("ask me api", () => {
     const refused = await ctx.app.inject({
       method: "POST",
       url: "/api/boxes/ning/questions",
-      payload: { content: "暂停后的问题", is_anonymous: false, asker_display_name: "阿远", idempotency_key: "name-3" },
+      payload: {
+        content: "暂停后的问题",
+        is_anonymous: false,
+        asker_display_name: "阿远",
+        idempotency_key: "name-3",
+        view_token: viewToken("name-3"),
+      },
     });
     assert.equal(refused.statusCode, 403);
   });
@@ -259,7 +270,7 @@ describe("ask me api", () => {
       model: "test-model",
       generate(input) {
         calls.push({ question: input.question, notes: input.style.notes });
-        return Promise.resolve("草稿 [你的看法]");
+        return Promise.resolve({ text: "草稿 [你的看法]", inputTokens: 4, outputTokens: 3 });
       },
     };
     const ctx = await use({ ai });
@@ -408,6 +419,8 @@ describe("ask me api", () => {
       assert.equal(privately.statusCode, 200);
       assert.equal(privately.json().delivery_state, "private_reserved");
       assert.equal(privately.json().sent_at === null, false);
+      assert.equal(privately.json().confirmed_content, "先留在草稿里");
+      assert.equal(privately.json().seen_at, null);
       assert.equal(privately.json().published_at, null);
       const afterPrivate = await ctx.app.inject({
         method: "GET",
@@ -418,30 +431,44 @@ describe("ask me api", () => {
       assert.deepEqual((await ctx.app.inject({ method: "GET", url: "/api/boxes/ning/answers" })).json(), []);
 
       ctx.config.publicRepliesEnabled = true;
-      const published = await ctx.app.inject({
+      const blockedConsent = await ctx.app.inject({
         method: "POST",
         url: `/api/me/answers/${saved.json().id}/publish`,
+        headers: { cookie: owner.cookie },
+        payload: { visibility: "public" },
+      });
+      assert.equal(blockedConsent.statusCode, 403);
+      const consented = await submit(ctx.app, "可以公开的问题", "reply-public", { allow_public: true });
+      const consentedAnswer = await ctx.app.inject({
+        method: "POST",
+        url: `/api/me/questions/${consented.json().id}/answers`,
+        headers: { cookie: owner.cookie },
+        payload: { content: "公开这一段", visibility: "public", source: "human" },
+      });
+      const published = await ctx.app.inject({
+        method: "POST",
+        url: `/api/me/answers/${consentedAnswer.json().id}/publish`,
         headers: { cookie: owner.cookie },
         payload: { visibility: "public" },
       });
       assert.equal(published.json().delivery_state, "published");
       assert.deepEqual((await ctx.app.inject({ method: "GET", url: "/api/boxes/ning/answers" })).json(), [
         {
-          id: saved.json().id,
-          question: "可以私下回复吗",
-          answer: "先留在草稿里",
+          id: consentedAnswer.json().id,
+          question: "可以公开的问题",
+          answer: "公开这一段",
           published_at: published.json().published_at,
         },
       ]);
 
       await ctx.app.inject({
         method: "PATCH",
-        url: `/api/me/answers/${saved.json().id}`,
+        url: `/api/me/answers/${consentedAnswer.json().id}`,
         headers: { cookie: owner.cookie },
         payload: { content: "改过但还没再次发布" },
       });
       const stillPublic = await ctx.app.inject({ method: "GET", url: "/api/boxes/ning/answers" });
-      assert.equal(stillPublic.json()[0].answer, "先留在草稿里");
+      assert.equal(stillPublic.json()[0].answer, "公开这一段");
 
       ctx.config.publicRepliesEnabled = false;
       assert.deepEqual((await ctx.app.inject({ method: "GET", url: "/api/boxes/ning/answers" })).json(), []);
@@ -574,11 +601,22 @@ async function register(app: FastifyInstance, email = SECRET_EMAIL) {
   return { cookie: sessionCookie(response), body: response.json() };
 }
 
-function submit(app: FastifyInstance, content: string, key: string) {
+const viewTokens = new Map<string, string>();
+
+function viewToken(key: string): string {
+  let token = viewTokens.get(key);
+  if (!token) {
+    token = randomBytes(32).toString("base64url");
+    viewTokens.set(key, token);
+  }
+  return token;
+}
+
+function submit(app: FastifyInstance, content: string, key: string, extra: Record<string, unknown> = {}) {
   return app.inject({
     method: "POST",
     url: "/api/boxes/ning/questions",
-    payload: { content, is_anonymous: true, idempotency_key: key },
+    payload: { content, is_anonymous: true, idempotency_key: key, view_token: viewToken(key), ...extra },
   });
 }
 

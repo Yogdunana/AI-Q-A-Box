@@ -15,6 +15,13 @@ export function hashToken(secret: string, token: string): string {
   return createHmac("sha256", secret).update(token).digest("hex");
 }
 
+export function hashesMatch(left: string, right: string): boolean {
+  const a = Buffer.from(left);
+  const b = Buffer.from(right);
+  if (a.length === 0 || a.length !== b.length) return false;
+  return timingSafeEqual(a, b);
+}
+
 export function fingerprint(secret: string, value: string): string {
   return createHmac("sha256", secret).update(value).digest("hex");
 }
