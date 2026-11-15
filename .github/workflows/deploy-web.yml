@@ -53,6 +53,10 @@ jobs:
           npm test
 
       - name: Build
+        env:
+          VITE_APP_INTENT: production
+          VITE_API_MODE: http
+          VITE_API_BASE_URL: ""
         run: npm run build
 
       - name: Configure SSH
@@ -101,6 +105,13 @@ jobs:
           asset="$(curl -fsS "$SITE_URL/" | grep -o '/assets/index-[^"]*\.js' | head -1)"
           type="$(curl -fsS -o /dev/null -w '%{content_type}' "$SITE_URL$asset")"
           echo "$type" | grep -qi javascript || { echo "::error::$asset served as $type"; exit 1; }
+          health_type="$(curl -fsS -o /tmp/health.json -w '%{content_type}' "$SITE_URL/api/health" || true)"
+          if ! echo "$health_type" | grep -qi 'application/json' || ! grep -q '"ok":true' /tmp/health.json; then
+            echo "::error::/api/health did not return JSON. Restoring the previous site. Start the API and proxy /api before deploying."
+            SSH=(ssh -i ~/.ssh/deploy_key -p "$DEPLOY_PORT" -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST")
+            "${SSH[@]}" "if [ -d '$SITE_DIR.prev' ]; then rm -rf '$SITE_DIR.bad'; mv '$SITE_DIR' '$SITE_DIR.bad'; mv '$SITE_DIR.prev' '$SITE_DIR'; fi"
+            exit 1
+          fi
           echo "Smoke test passed ($asset)"
 
       - name: Remove key

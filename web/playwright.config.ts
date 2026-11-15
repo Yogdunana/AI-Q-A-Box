@@ -6,6 +6,7 @@ const channel = process.env.PW_CHANNEL;
 
 export default defineConfig({
   testDir: "./e2e",
+  testIgnore: "live-reply.spec.ts",
   fullyParallel: true,
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? "github" : "list",

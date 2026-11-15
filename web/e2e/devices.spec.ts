@@ -14,6 +14,7 @@ async function horizontalOverflow(page: Page) {
 const PAGES = [
   "/",
   "/lin",
+  "/reply",
   "/auth/login",
   "/app",
   "/app/inbox",

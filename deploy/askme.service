@@ -1,0 +1,17 @@
+# Example systemd unit. The owner copies it to /etc/systemd/system/askme.service.
+# EnvironmentFile points at a root-owned file that is not in this repository.
+
+[Unit]
+Description=Ask Me API
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/askme/server
+EnvironmentFile=/etc/askme.env
+ExecStart=/usr/bin/node --experimental-sqlite --experimental-strip-types --disable-warning=ExperimentalWarning src/index.ts
+Restart=on-failure
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

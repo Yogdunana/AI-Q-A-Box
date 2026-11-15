@@ -1,6 +1,6 @@
 # Ask "Me" 后端
 
-`server/` 实现前端 `web/src/api/http.ts` 里的 REST 契约。前端默认仍走浏览器里的 mock；把 `web/.env.local` 的 `VITE_API_MODE` 改成 `http` 后，才会请求这里。
+`server/` 实现前端 `web/src/api/http.ts` 里的 REST 契约。本地开发默认可以继续用浏览器里的 mock。把 `VITE_APP_INTENT=development` 和 `VITE_API_MODE=http` 写进 `web/.env.local` 后，Vite 会把 `/api` 代理到这里。生产构建必须显式使用 `http`，否则构建失败。
 
 技术选择沿用仓库现有的 TypeScript，而不是把已经完成的 Vite SPA 改成别的全栈框架。HTTP 用 Fastify。数据用 Node 22 自带的 `node:sqlite`，迁移是 `migrations/` 里的 SQL 文件。这样本地测试不需要另起数据库，也符合当前单机部署。PostgreSQL 仍然是待确认项。`node:sqlite` 在 Node 22 里还标着实验接口，启动脚本带了 `--experimental-sqlite`。
 
@@ -56,11 +56,11 @@ Vite 把 `/api` 代理到 `127.0.0.1:8787`。也可以把 `VITE_API_BASE_URL` �
 
 | 状态 | 含义 |
 | --- | --- |
-| `draft` | 已保存，未确认。`published_at` 和 `sent_at` 都是空的 |
-| `private_reserved` | 箱主确认了私密回复。`sent_at` 是确认时间，不是送达时间。没有收集提问者联系方式，所以不会发邮件 |
-| `published` | 箱主确认了公开发布。公开页只在 `PUBLIC_REPLIES_ENABLED=true` 时读 `published_content` |
+| `draft` | 已保存，未确认。提问者看不到这段文字 |
+| `private_reserved` | 箱主确认了私密回复。`sent_at` 和 `confirmed_at` 是确认时间，不是送达时间。提问者只能通过查看链接读 `confirmed_content` |
+| `published` | 箱主确认了公开发布。还要 `PUBLIC_REPLIES_ENABLED=true` 且提问者提交时同意公开 |
 
-保存或编辑草稿不会改 `published_content`。已经公开的文字要等箱主再次确认发布才会更新。
+保存或编辑草稿只改草稿，不改 `confirmed_content` 或 `published_content`。`seen_at` 只在提问者实际打开已确认快照时写入。迁移不会把旧的 `private_reserved` 填成快照或已读。
 
 问题状态沿用前端：`submitted`、`reviewing`、`drafted`、`answered_private`、`published`、`archived`、`spam`、`flagged`、`deleted`。生成草稿或保存回复不会自动进入后四个交付状态。
 
@@ -71,6 +71,8 @@ Vite 把 `/api` 代理到 `127.0.0.1:8787`。也可以把 `VITE_API_BASE_URL` �
 | 方法 | 路径 | 谁可以调用 |
 | --- | --- | --- |
 | `GET` | `/api/health` | 任何人。只返回 `{ ok: true }` |
+| `GET` | `/api/capabilities` | 任何人。返回公开回复开关、查看链接方式和通知方式 |
+| `POST` | `/api/reply-access` | 持有查看凭证的人。请求体是 `{ token }`，不要把凭证放进 URL |
 | `POST` | `/api/auth/register` | 任何人。成功后写 HttpOnly Cookie |
 | `POST` | `/api/auth/login` | 任何人。邮箱不存在和密码错误是同一句提示 |
 | `POST` | `/api/auth/logout` | 当前会话。没有会话也返回 204 |
@@ -78,7 +80,7 @@ Vite 把 `/api` 代理到 `127.0.0.1:8787`。也可以把 `VITE_API_BASE_URL` �
 | `PATCH` | `/api/me` | 箱主。只改显示名称 |
 | `GET` | `/api/boxes/:slug` | 任何人。不存在和保留 slug 都是同样的 404 |
 | `GET` | `/api/boxes/:slug/answers` | 任何人。公开开关关闭时，存在的箱子返回 `[]` |
-| `POST` | `/api/boxes/:slug/questions` | 任何人。暂停的箱子返回 403 |
+| `POST` | `/api/boxes/:slug/questions` | 任何人。请求体包含 `idempotency_key` 和 `view_token`。暂停的箱子返回 403 |
 | `POST` | `/api/me/boxes` | 箱主。第二个箱子返回 409 |
 | `PATCH` | `/api/me/boxes/:id` | 只有这个箱子的箱主 |
 | `GET` | `/api/me/questions?status=&q=` | 箱主。`counts` 统计自己箱子里未删除的问题 |
