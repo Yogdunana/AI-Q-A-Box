@@ -31,11 +31,37 @@ describe("http client", () => {
 
   it("sends JSON bodies for mutations", async () => {
     const fetch = mockFetch(200, { id: "q1" });
-    await createHttpClient().submitQuestion("lin yi", { content: "hi", is_anonymous: true, idempotency_key: "k" });
+    await createHttpClient().submitQuestion("lin yi", {
+      content: "hi",
+      is_anonymous: true,
+      idempotency_key: "k",
+      view_token: "token",
+    });
     const [url, init] = fetch.mock.calls[0] as unknown as [string, RequestInit];
     expect(url).toBe("/api/boxes/lin%20yi/questions");
     expect(init.method).toBe("POST");
-    expect(JSON.parse(init.body as string)).toEqual({ content: "hi", is_anonymous: true, idempotency_key: "k" });
+    expect(JSON.parse(init.body as string)).toEqual({
+      content: "hi",
+      is_anonymous: true,
+      idempotency_key: "k",
+      view_token: "token",
+    });
+  });
+
+  it("rejects an HTML success body instead of treating the SPA shell as data", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response("<!doctype html><div id=\"root\"></div>", { status: 200, headers: { "Content-Type": "text/html" } })),
+    );
+    await expect(createHttpClient().getPublicBox("lin")).rejects.toMatchObject({ code: "invalid_response" });
+  });
+
+  it("rejects JSON that is not the expected success shape", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(JSON.stringify(["not", "a", "box"]), { status: 200, headers: { "Content-Type": "application/json" } })),
+    );
+    await expect(createHttpClient().getPublicBox("lin")).rejects.toMatchObject({ code: "invalid_response" });
   });
 
   it("maps error statuses to typed errors with field messages", async () => {

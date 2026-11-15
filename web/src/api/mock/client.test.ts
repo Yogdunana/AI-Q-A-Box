@@ -4,12 +4,19 @@ import { DEFAULT_REPLY_STYLE } from "../defaults";
 import type { ApiClient } from "../types";
 import { createMockClient, FAIL_AI_KEY } from "./client";
 import { DEMO_EMAIL, DEMO_PASSWORD } from "./seed";
+import { newViewToken } from "../../lib/view-token";
 
 let api: ApiClient;
 let now = Date.parse("2026-11-15T08:00:00Z");
 
 const submit = (content = "你最近在忙什么？", extra: Partial<Parameters<ApiClient["submitQuestion"]>[1]> = {}) =>
-  api.submitQuestion("lin", { content, is_anonymous: true, idempotency_key: crypto.randomUUID(), ...extra });
+  api.submitQuestion("lin", {
+    content,
+    is_anonymous: true,
+    idempotency_key: crypto.randomUUID(),
+    view_token: newViewToken(),
+    ...extra,
+  });
 
 async function expectCode(promise: Promise<unknown>, code: ApiError["code"]) {
   await expect(promise).rejects.toBeInstanceOf(ApiError);
@@ -30,10 +37,15 @@ describe("public submission", () => {
     expect(list.items[0]).toMatchObject({ id, content: "一个新的问题", is_anonymous: true, asker_display_name: null });
   });
 
-  it("deduplicates retries that reuse the idempotency key", async () => {
-    const first = await submit("重复提交", { idempotency_key: "same" });
-    const second = await submit("重复提交", { idempotency_key: "same" });
+  it("deduplicates retries that reuse the idempotency key and the same view token", async () => {
+    const view_token = newViewToken();
+    const first = await submit("重复提交", { idempotency_key: "same", view_token });
+    const second = await submit("重复提交", { idempotency_key: "same", view_token });
     expect(second.id).toBe(first.id);
+    await expectCode(submit("重复提交", { idempotency_key: "same", view_token: newViewToken() }), "conflict");
+    const reply = await api.readReply(view_token);
+    expect(reply.state).toBe("pending");
+    expect(reply.question?.content).toBe("重复提交");
   });
 
   it("rate limits bursts from the same browser", async () => {
@@ -112,7 +124,8 @@ describe("reply workflow", () => {
     const detail = await api.getQuestion("q_demo_1");
     expect(detail.question.status).toBe("drafted");
     expect(detail.answer).toBeNull();
-    expect(await api.getPublicAnswers("lin")).toHaveLength(2);
+    expect(await api.getPublicAnswers("lin")).toHaveLength(0);
+    expect(await api.getCapabilities()).toMatchObject({ public_replies_enabled: false, asker_access: "link" });
   });
 
   it("surfaces model failures without touching the question", async () => {
@@ -121,15 +134,16 @@ describe("reply workflow", () => {
     expect((await api.getQuestion("q_demo_1")).question.status).toBe("submitted");
   });
 
-  it("publishes only after the owner confirms, and public answers appear on the box page", async () => {
-    const saved = await api.saveAnswer("q_demo_2", { content: "先打磨三个完整案例。", visibility: "public", source: "human" });
+  it("confirms a private snapshot and refuses to publish without asker consent", async () => {
+    const saved = await api.saveAnswer("q_demo_2", { content: "先打磨三个完整案例。", visibility: "private", source: "human" });
     expect((await api.getQuestion("q_demo_2")).question.status).toBe("drafted");
-    expect(await api.getPublicAnswers("lin")).toHaveLength(2);
+    await expectCode(api.publishAnswer(saved.id, "public"), "forbidden");
 
-    await api.publishAnswer(saved.id, "public");
-    expect((await api.getQuestion("q_demo_2")).question.status).toBe("published");
-    const answers = await api.getPublicAnswers("lin");
-    expect(answers[0]).toMatchObject({ answer: "先打磨三个完整案例。" });
+    const confirmed = await api.publishAnswer(saved.id, "private");
+    expect((await api.getQuestion("q_demo_2")).question.status).toBe("answered_private");
+    expect(confirmed.confirmed_content).toBe("先打磨三个完整案例。");
+    await api.updateAnswer(saved.id, { content: "还没再次确认" });
+    expect((await api.getQuestion("q_demo_2")).answer?.confirmed_content).toBe("先打磨三个完整案例。");
   });
 
   it("keeps private replies off the public page", async () => {

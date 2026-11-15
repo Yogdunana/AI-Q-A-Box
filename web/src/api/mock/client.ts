@@ -23,6 +23,7 @@ import { createSeed, type MockDb, type StoredUser } from "./seed";
 
 const DB_KEY = "askme:mock-db";
 const SESSION_KEY = "askme:mock-session";
+const PUBLIC_REPLIES_KEY = "askme:mock-public-replies";
 /** Set to "1" in localStorage to make every draft request fail (for exercising error states). */
 export const FAIL_AI_KEY = "askme:mock-fail-ai";
 
@@ -55,7 +56,7 @@ export function createMockClient(options: MockOptions = {}): ApiClient {
     if (raw) {
       try {
         const parsed = JSON.parse(raw) as MockDb;
-        if (parsed.version === 1) return parsed;
+        if (parsed.version === 2) return parsed;
       } catch {
         /* fall through to reseed */
       }
@@ -207,21 +208,31 @@ export function createMockClient(options: MockOptions = {}): ApiClient {
       };
     },
 
+    async getCapabilities() {
+      await wait(80, 120);
+      return {
+        public_replies_enabled: storage.getItem(PUBLIC_REPLIES_KEY) === "1",
+        asker_access: "link" as const,
+        notifications: "none" as const,
+      };
+    },
+
     async getPublicAnswers(slug) {
       await wait(260, 560);
+      if (storage.getItem(PUBLIC_REPLIES_KEY) !== "1") return [];
       const db = load();
       const box = findPublicBox(db, slug);
       return db.answers
         .filter((a) => {
-          if (a.visibility !== "public" || !a.published_at) return false;
+          if (a.visibility !== "public" || !a.published_at || !a.confirmed_content) return false;
           const q = db.questions.find((x) => x.id === a.question_id);
-          return q?.box_id === box.id && q.status === "published";
+          return q?.box_id === box.id && q.status === "published" && q.public_consent;
         })
         .sort((a, b) => b.published_at!.localeCompare(a.published_at!))
         .map((a) => ({
           id: a.id,
           question: db.questions.find((q) => q.id === a.question_id)!.content,
-          answer: a.content,
+          answer: a.confirmed_content ?? a.content,
           published_at: a.published_at!,
         }));
     },
@@ -234,8 +245,20 @@ export function createMockClient(options: MockOptions = {}): ApiClient {
         throw new ApiError("forbidden", "这个提问箱暂时不接收新问题。", { status: 403 });
       }
 
+      if (!input.view_token || input.view_token.length < 43) {
+        throw new ApiError("validation", "请重新提交一次。", { status: 422, fields: { view_token: "请重新提交一次。" } });
+      }
       const existing = db.idempotency[input.idempotency_key];
-      if (existing) return { id: existing };
+      if (existing) {
+        if (db.viewTokens[existing] !== input.view_token) {
+          throw new ApiError("conflict", "这次重试和原来的提交不一致。请使用第一次提交时保存的查看链接。", { status: 409 });
+        }
+        return { id: existing };
+      }
+      const publicEnabled = storage.getItem(PUBLIC_REPLIES_KEY) === "1";
+      if (!publicEnabled && input.allow_public) {
+        throw new ApiError("forbidden", "公开发布还没有开放，这次没有记录公开授权。", { status: 403 });
+      }
 
       const contentError = validateQuestion(input.content);
       if (contentError) {
@@ -267,11 +290,39 @@ export function createMockClient(options: MockOptions = {}): ApiClient {
         status: "submitted",
         risk_level: "none",
         submitted_at: iso(),
+        public_consent: publicEnabled && input.allow_public === true,
       };
       db.questions.push(question);
       db.idempotency[input.idempotency_key] = question.id;
+      db.viewTokens[question.id] = input.view_token;
       save(db);
       return { id: question.id };
+    },
+
+    async readReply(token) {
+      await wait(200, 400);
+      const db = load();
+      const questionId = Object.entries(db.viewTokens).find(([, stored]) => stored === token)?.[0];
+      if (!questionId) throw new ApiError("not_found", "这个查看链接无效。", { status: 404 });
+      const question = db.questions.find((item) => item.id === questionId);
+      if (!question || question.status === "deleted") return { state: "deleted" as const };
+      const box = db.boxes.find((item) => item.id === question.box_id);
+      const owner = db.users.find((item) => item.id === box?.owner_id);
+      const answer = db.answers.find((item) => item.question_id === question.id);
+      const base = {
+        box: { title: box?.title ?? "", owner_display_name: owner?.display_name ?? "" },
+        question: { content: question.content, submitted_at: question.submitted_at },
+      };
+      if (!answer?.confirmed_content || !answer.confirmed_at) {
+        return { state: "pending" as const, ...base, reply: null };
+      }
+      if (!answer.seen_at) answer.seen_at = iso();
+      save(db);
+      return {
+        state: "confirmed" as const,
+        ...base,
+        reply: { content: answer.confirmed_content, confirmed_at: answer.confirmed_at },
+      };
     },
 
     async createBox(input) {
@@ -401,15 +452,30 @@ export function createMockClient(options: MockOptions = {}): ApiClient {
       assertAnswer(input.content);
       let answer = db.answers.find((a) => a.question_id === questionId);
       if (answer) {
-        Object.assign(answer, input, { updated_at: iso() });
+        if (input.draft_revision !== undefined && input.draft_revision <= answer.draft_revision) {
+          save(db);
+          return answer;
+        }
+        answer.content = input.content;
+        answer.visibility = input.visibility;
+        answer.source = input.source;
+        answer.updated_at = iso();
+        answer.draft_revision = input.draft_revision ?? answer.draft_revision + 1;
       } else {
         answer = {
           id: uid("ans"),
           question_id: questionId,
-          ...input,
+          content: input.content,
+          visibility: input.visibility,
+          source: input.source,
           updated_at: iso(),
           published_at: null,
           sent_at: null,
+          delivery_state: "draft",
+          confirmed_content: null,
+          confirmed_at: null,
+          seen_at: null,
+          draft_revision: input.draft_revision ?? 1,
         };
         db.answers.push(answer);
       }
@@ -424,28 +490,54 @@ export function createMockClient(options: MockOptions = {}): ApiClient {
       const user = requireUser(db);
       const answer = requireAnswer(db, user, answerId);
       if (input.content !== undefined) assertAnswer(input.content);
-      Object.assign(answer, input, { updated_at: iso() });
+      if (input.draft_revision !== undefined && input.draft_revision <= answer.draft_revision) {
+        return answer;
+      }
+      if (input.content !== undefined) answer.content = input.content;
+      if (input.visibility !== undefined) answer.visibility = input.visibility;
+      if (input.source !== undefined) answer.source = input.source;
+      answer.updated_at = iso();
+      answer.draft_revision = input.draft_revision ?? answer.draft_revision + 1;
       save(db);
       return answer;
     },
 
-    async publishAnswer(answerId, visibility) {
+    async publishAnswer(answerId, visibility, draftRevision) {
       await wait(520, 860);
       const db = load();
       const user = requireUser(db);
       const answer = requireAnswer(db, user, answerId);
       const question = requireQuestion(db, user, answer.question_id);
-      answer.visibility = visibility;
-      answer.updated_at = iso();
+      if (question.status === "spam") {
+        throw new ApiError("conflict", "这个问题被标记为垃圾，移回收件箱后才能回复。", { status: 409 });
+      }
+      if (draftRevision !== undefined && draftRevision !== answer.draft_revision) {
+        throw new ApiError("conflict", "回复内容刚更新过，请再确认一次。", { status: 409 });
+      }
       if (visibility === "public") {
+        if (storage.getItem(PUBLIC_REPLIES_KEY) !== "1") {
+          throw new ApiError("forbidden", "公开发布还没有开放，这次没有公开。", { status: 403 });
+        }
+        if (!question.public_consent) {
+          throw new ApiError("forbidden", "提问者没有同意公开，不能发布到提问页。", { status: 403 });
+        }
+        answer.visibility = "public";
         answer.published_at = iso();
         answer.sent_at = null;
+        answer.delivery_state = "published";
         question.status = "published";
       } else {
+        answer.visibility = "private";
         answer.sent_at = iso();
         answer.published_at = null;
+        answer.delivery_state = "private_reserved";
         question.status = "answered_private";
       }
+      const same = answer.confirmed_content === answer.content;
+      answer.confirmed_content = answer.content;
+      answer.confirmed_at = iso();
+      if (!same) answer.seen_at = null;
+      answer.updated_at = iso();
       save(db);
       return answer;
     },

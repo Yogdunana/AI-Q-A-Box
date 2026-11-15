@@ -35,7 +35,10 @@ describe("public question box", () => {
     await user.type(screen.getByLabelText("你的称呼"), "阿远");
     await user.click(submit);
 
-    expect(await screen.findByRole("heading", { name: "问题已送达" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "问题已提交" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "保存查看链接" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "查看回复" })).toBeInTheDocument();
+    expect(screen.getByText(/丢失后无法找回/)).toBeInTheDocument();
     const letter = screen.getByText("你是怎么安排一天的时间的？").closest("figure")!;
     expect(within(letter).getByText("你的问题")).toBeInTheDocument();
   });

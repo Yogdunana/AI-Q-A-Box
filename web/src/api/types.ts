@@ -60,6 +60,8 @@ export interface Question {
   status: QuestionStatus;
   risk_level: "none" | "review";
   submitted_at: string;
+  /** True only when the asker explicitly allowed a public reply. */
+  public_consent: boolean;
 }
 
 export interface Answer {
@@ -70,7 +72,13 @@ export interface Answer {
   source: "human" | "ai_assisted";
   updated_at: string;
   published_at: string | null;
+  /** Confirmation time for a private reply. This is not a delivery time. */
   sent_at: string | null;
+  delivery_state: "draft" | "private_reserved" | "published";
+  confirmed_content: string | null;
+  confirmed_at: string | null;
+  seen_at: string | null;
+  draft_revision: number;
 }
 
 export interface AiGeneration {
@@ -129,6 +137,22 @@ export interface SubmitQuestionInput {
   is_anonymous: boolean;
   asker_display_name?: string;
   idempotency_key: string;
+  /** High-entropy secret held by the asker. The idempotency key is not this value. */
+  view_token: string;
+  allow_public?: boolean;
+}
+
+export interface Capabilities {
+  public_replies_enabled: boolean;
+  asker_access: "link";
+  notifications: "none";
+}
+
+export interface ReplyAccess {
+  state: "pending" | "confirmed" | "deleted";
+  box?: { title: string; owner_display_name: string };
+  question?: { content: string; submitted_at: string };
+  reply?: { content: string; confirmed_at: string } | null;
 }
 
 export interface BoxInput {
@@ -145,6 +169,7 @@ export interface AnswerInput {
   content: string;
   visibility: ReplyVisibility;
   source: Answer["source"];
+  draft_revision?: number;
 }
 
 export interface Credentials {
@@ -165,9 +190,11 @@ export interface ApiClient {
   logout(): Promise<void>;
   updateProfile(input: { display_name: string }): Promise<User>;
 
+  getCapabilities(): Promise<Capabilities>;
   getPublicBox(slug: string): Promise<PublicBox>;
   getPublicAnswers(slug: string): Promise<PublicAnswer[]>;
   submitQuestion(slug: string, input: SubmitQuestionInput): Promise<{ id: string }>;
+  readReply(token: string): Promise<ReplyAccess>;
 
   createBox(input: BoxInput): Promise<QuestionBox>;
   updateBox(id: string, input: Partial<BoxInput>): Promise<QuestionBox>;
@@ -182,5 +209,5 @@ export interface ApiClient {
 
   saveAnswer(questionId: string, input: AnswerInput): Promise<Answer>;
   updateAnswer(answerId: string, input: Partial<AnswerInput>): Promise<Answer>;
-  publishAnswer(answerId: string, visibility: ReplyVisibility): Promise<Answer>;
+  publishAnswer(answerId: string, visibility: ReplyVisibility, draftRevision?: number): Promise<Answer>;
 }

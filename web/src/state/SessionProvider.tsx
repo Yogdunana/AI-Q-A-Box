@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { api, type Credentials, type QuestionBox, type RegisterInput, type Session, type User } from "../api";
+import { clearOwnerDrafts } from "../lib/owner-draft";
 import { SessionContext, type SessionContextValue } from "./session";
 import { clearQueries } from "../lib/query";
 
@@ -25,6 +26,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(async (input: Credentials) => {
     const result = await api.login(input);
+    clearOwnerDrafts();
     clearQueries();
     setSession(result);
     return result;
@@ -32,6 +34,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   const register = useCallback(async (input: RegisterInput) => {
     const result = await api.register(input);
+    clearOwnerDrafts();
     clearQueries();
     setSession(result);
     return result;
@@ -39,6 +42,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(async () => {
     await api.logout();
+    clearOwnerDrafts();
     clearQueries();
     setSession(null);
   }, []);

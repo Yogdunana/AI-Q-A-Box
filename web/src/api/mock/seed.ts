@@ -7,13 +7,15 @@ export interface StoredUser extends User {
 }
 
 export interface MockDb {
-  version: 1;
+  version: 2;
   users: StoredUser[];
   boxes: QuestionBox[];
   questions: Question[];
   answers: Answer[];
   generations: AiGeneration[];
   idempotency: Record<string, string>;
+  /** Demo-only copy of the view token. The real server stores a hash instead. */
+  viewTokens: Record<string, string>;
 }
 
 export const DEMO_EMAIL = "demo@askme.local";
@@ -69,23 +71,23 @@ const SEED: SeedQuestion[] = [
   {
     content: "你觉得 AI 会取代界面设计师吗？",
     ago: 2 * DAY,
-    status: "published",
+    status: "answered_private",
     answer: {
       content:
         "我不太担心「取代」，更关心「分工怎么变」。工具会接过越来越多重复的部分，但判断什么值得做、为谁做、做到什么程度，依然需要人。\n\n与其担心，不如把时间花在理解问题本身上。",
-      visibility: "public",
+      visibility: "private",
       source: "ai_assisted",
     },
   },
   {
     content: "推荐几本对你影响比较大的设计类书籍？",
     ago: 3 * DAY,
-    status: "published",
+    status: "answered_private",
     nickname: "阿青",
     answer: {
       content:
         "《设计心理学》适合入门，《写给大家看的设计书》很实用。如果只能选一本，我会推荐《The Shape of Design》——它讲的是为什么做，而不是怎么做。",
-      visibility: "public",
+      visibility: "private",
       source: "human",
     },
   },
@@ -130,20 +132,21 @@ export function createSeed(now = Date.now()): MockDb {
     title: "问我任何事",
     description: "独立设计师，在做一些小而美的产品。关于设计、职业，或者生活里的小事，都可以问。",
     anonymous_mode: "allowed",
-    default_reply_visibility: "public",
+    default_reply_visibility: "private",
     status: "active",
     reply_style: { ...DEFAULT_REPLY_STYLE, notes: "我是独立设计师，做过五年 B 端产品，现在专注个人项目。回答尽量简短、真诚，不说空话。" },
     created_at: iso(30 * DAY),
   };
 
   const db: MockDb = {
-    version: 1,
+    version: 2,
     users: [user],
     boxes: [box],
     questions: [],
     answers: [],
     generations: [],
     idempotency: {},
+    viewTokens: {},
   };
 
   SEED.forEach((item, index) => {
@@ -157,6 +160,7 @@ export function createSeed(now = Date.now()): MockDb {
       status: item.status,
       risk_level: item.status === "flagged" ? "review" : "none",
       submitted_at: iso(item.ago),
+      public_consent: false,
     });
 
     if (item.draft) {
@@ -181,8 +185,13 @@ export function createSeed(now = Date.now()): MockDb {
         visibility: item.answer.visibility,
         source: item.answer.source,
         updated_at: answeredAt,
-        published_at: item.answer.visibility === "public" ? answeredAt : null,
-        sent_at: item.answer.visibility === "private" ? answeredAt : null,
+        published_at: null,
+        sent_at: answeredAt,
+        delivery_state: "private_reserved",
+        confirmed_content: item.answer.content,
+        confirmed_at: answeredAt,
+        seen_at: null,
+        draft_revision: 1,
       });
     }
   });

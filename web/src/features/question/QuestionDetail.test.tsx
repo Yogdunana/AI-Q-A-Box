@@ -44,17 +44,31 @@ describe("question detail", () => {
     await user.type(editor, "补充一句。");
     await user.click(screen.getByRole("button", { name: "确认回复" }));
 
-    const dialog = await screen.findByRole("dialog", { name: "公开发布这条回复？" });
+    const dialog = await screen.findByRole("dialog", { name: "确认这条回复？" });
     expect(within(dialog).getByText(/这条回复基于 AI 草稿/)).toBeInTheDocument();
-    await user.click(within(dialog).getByRole("button", { name: "公开发布" }));
+    expect(screen.queryByRole("button", { name: "公开" })).not.toBeInTheDocument();
+    await user.click(within(dialog).getByRole("button", { name: "确认回复" }));
 
-    expect(await screen.findByText("回复已公开发布")).toBeInTheDocument();
+    expect(await screen.findByText(/回复已确认/)).toBeInTheDocument();
     expect(await screen.findByText("AI 协助起草")).toBeInTheDocument();
 
     const stored = await api.getQuestion("q_demo_2");
-    expect(stored.question.status).toBe("published");
-    expect(stored.answer).toMatchObject({ visibility: "public", source: "ai_assisted" });
+    expect(stored.question.status).toBe("answered_private");
+    expect(stored.answer).toMatchObject({ visibility: "private", source: "ai_assisted" });
     expect(stored.answer!.content).toContain("补充一句。");
+  });
+
+  it("keeps unsaved reply text when a navigation is cancelled", async () => {
+    const user = userEvent.setup();
+    const { router } = renderRoutes(routes, "/app/questions/q_demo_1");
+    await screen.findByText(/做独立产品的第一年/);
+    const editor = screen.getByLabelText<HTMLTextAreaElement>("回复内容");
+    await user.type(editor, "先记在这里");
+    await router.navigate("/app/inbox");
+    const dialog = await screen.findByRole("dialog", { name: "回复还没保存" });
+    await user.click(within(dialog).getByRole("button", { name: "取消" }));
+    expect(screen.getByLabelText<HTMLTextAreaElement>("回复内容").value).toContain("先记在这里");
+    expect(router.state.location.pathname).toBe("/app/questions/q_demo_1");
   });
 
   it("asks before marking a question as spam", async () => {
