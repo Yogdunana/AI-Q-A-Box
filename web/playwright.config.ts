@@ -6,7 +6,7 @@ const channel = process.env.PW_CHANNEL;
 
 export default defineConfig({
   testDir: "./e2e",
-  testIgnore: "live-reply.spec.ts",
+  testIgnore: /live-reply\.spec\.ts/,
   fullyParallel: true,
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? "github" : "list",
@@ -17,7 +17,7 @@ export default defineConfig({
   },
   projects: [
     { name: "desktop", use: { ...devices["Desktop Chrome"], channel, viewport: { width: 1440, height: 900 } } },
-    { name: "mobile", use: { ...devices["Pixel 7"], channel }, testIgnore: /devices\.spec\.ts/ },
+    { name: "mobile", use: { ...devices["Pixel 7"], channel }, testIgnore: [/devices\.spec\.ts/, /live-reply\.spec\.ts/] },
   ],
   webServer: {
     command: `npx vite --host 127.0.0.1 --port ${PORT} --strictPort`,
