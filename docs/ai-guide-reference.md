@@ -1,6 +1,6 @@
 ---
 title: Ask "Me" 代执行 Bot 参考
-version: 1.2.0
+version: 1.2.1
 repository: Yogdunana/AI-Q-A-Box
 source: 与 docs/ai-guide.md 一起使用。规则冲突时，以更严格的安全限制为准。
 last_updated: 2026-11-14
@@ -182,7 +182,7 @@ gh pr merge <编号> --admin
 
 | 机制 | 作用 |
 | --- | --- |
-| `.github/workflows/reject-external.yml` | 关闭非 `Yogdunana` 的 Issue，以及来自 Fork 或其他账号的 Pull Request。已经关闭的 PR 再次推送时不再重复留言 |
+| `.github/workflows/reject-external.yml` | 关闭其他账号的 Issue，以及来自 Fork 或其他账号的 Pull Request。`Yogdunana` 和所有者的 `cursor[bot]` 保留。已经关闭的 PR 再次推送时不再重复留言 |
 | `.github/workflows/member-review.yml` | 缺少提醒时通知所有者，并把审核结果写成 `member-review` 状态 |
 | `.github/CODEOWNERS` | 标明所有者。不把它设成 GitHub 必需批准，避免同一账号无法批准自己的 PR |
 | `.gitignore` | 忽略 `.env` 和环境文件 |
@@ -308,5 +308,6 @@ GH_TOKEN="<administration token>" scripts/lock-repository.sh
 | 1 | 四位真人和审核 agent 共用 `Yogdunana`，GitHub 无法从账号区分是哪一次执行 | 用 `Author-Member`、`Author-Tool`、`Reviewer-Member: owner`、`Reviewer-Tool`。执行 Bot 不给自己的 PR 写批准 |
 | 2 | Cloud Agent 安装令牌没有 administration 权限 | 所有者在本机执行 `scripts/lock-repository.sh` |
 | 3 | 个人公开仓库可能无法关闭 Fork | Fork 仍然不能向本仓库推送。外部 PR 会被工作流关闭 |
+| 6 | Cursor 代开的 Issue 作者是 `cursor[bot]`，不是 `Yogdunana` | 工作流保留这个 Bot 在本仓库的 Issue 和 PR。其他账号仍然关闭 |
 | 4 | `member-review` 在进入 `main` 之前不会对已打开的 PR 生效 | 工作流合并进 `main` 后再执行 `--with-review-check` |
 | 5 | 必需批准人数若设成 1，同一账号无法批准自己的 PR，所有 PR 都会卡住 | 保持为 0，审核由评论和工作流完成 |
