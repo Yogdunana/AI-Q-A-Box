@@ -6,6 +6,7 @@ export type ApiErrorCode =
   | "validation"
   | "rate_limited"
   | "network"
+  | "invalid_response"
   | "aborted"
   | "server";
 
@@ -49,6 +50,7 @@ const fallbackMessages: Record<ApiErrorCode, string> = {
   validation: "提交的内容有误，请检查后重试。",
   rate_limited: "操作太频繁了，请稍后再试。",
   network: "网络连接失败，请检查网络后重试。",
+  invalid_response: "服务返回了无法识别的内容。请确认站点已接通 API。",
   aborted: "操作已取消。",
   server: "服务暂时不可用，请稍后重试。",
 };

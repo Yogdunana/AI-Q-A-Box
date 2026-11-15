@@ -1,6 +1,8 @@
 # Ask "Me" 前端
 
-`web/` 是 Ask "Me" 的前端应用：开屏页、公开提问页、箱主工作台（概览、收件箱、问题详情与 AI 草稿、分享、设置）以及登录注册。后端在 [`server/`](../server/)。前端默认仍用浏览器本地的 mock；`VITE_API_MODE=http` 时请求后端。
+`web/` 是 Ask "Me" 的前端应用：开屏页、公开提问页、提交后的查看链接、回复查看页、箱主工作台（概览、收件箱、问题详情与 AI 草稿、分享、设置）以及登录注册。后端在 [`server/`](../server/)。
+
+运行意图有三种。`development` 默认用浏览器里的 mock，也可以改成 `http`。`demo` 只能用 mock，并且页面上一直有演示标识。`production` 必须是 `http`。生产构建如果没有这个配置会失败，不会悄悄退回 mock。
 
 ## 技术栈
 
@@ -25,7 +27,8 @@ npm run dev          # http://localhost:5173
 | 命令 | 作用 |
 | --- | --- |
 | `npm run dev` | 开发服务器 |
-| `npm run build` | 类型检查并构建到 `dist/` |
+| `npm run build` | 类型检查并构建。生产构建需要 `VITE_APP_INTENT=production` 和 `VITE_API_MODE=http` |
+| `npm run test:e2e:live` | 用真实后端、隔离的 SQLite 和模型替身跑两个浏览器的联调 |
 | `npm run typecheck` | 只做类型检查 |
 | `npm run lint` | oxlint |
 | `npm test` | Vitest 单元与组件测试 |
@@ -37,7 +40,8 @@ npm run dev          # http://localhost:5173
 
 | 变量 | 说明 |
 | --- | --- |
-| `VITE_API_MODE` | `mock`（默认）或 `http`。`http` 使用 `server/` |
+| `VITE_APP_INTENT` | `development`、`demo` 或 `production` |
+| `VITE_API_MODE` | `mock` 或 `http`。生产必须是 `http` |
 | `VITE_API_BASE_URL` | `http` 模式下的 API 根地址。留空时走同源 `/api`，开发服务器会代理到 `127.0.0.1:8787` |
 
 前端不持有任何密钥。AI 调用、提示词组装、限流都应在服务端完成（PRD §8.3、§11.2）。
@@ -50,7 +54,8 @@ npm run dev          # http://localhost:5173
 | --- | --- |
 | `/` | 开屏页 |
 | `/:slug` | 公开提问页 |
-| `/:slug/submitted` | 提交成功 |
+| `/:slug/submitted` | 提交成功，并给出查看链接 |
+| `/reply` | 用链接里的片段凭证查看自己的问题和已确认回复。凭证不进入查询字符串 |
 | `/auth/login`、`/auth/register` | 登录、注册 |
 | `/app/setup` | 首次设置提问箱 |
 | `/app` | 工作台概览 |
@@ -92,7 +97,9 @@ e2e/              Playwright 测试
 | `POST` | `/api/auth/login`、`/api/auth/register`、`/api/auth/logout` | PRD `/api/auth/*`，具体认证方式待定 |
 | `PATCH` | `/api/me` | 前端补充：修改显示名称 |
 | `GET` | `/api/boxes/{slug}` | PRD |
-| `POST` | `/api/boxes/{slug}/questions` | PRD。请求体带 `idempotency_key` |
+| `GET` | `/api/capabilities` | 前端据此决定是否显示公开发布，不自己硬编码开关 |
+| `POST` | `/api/boxes/{slug}/questions` | 请求体带 `idempotency_key` 和 `view_token`。幂等键不能用来读取回复 |
+| `POST` | `/api/reply-access` | 请求体 `{ token }`。只返回该提问者的问题和已确认快照 |
 | `POST`、`PATCH` | `/api/me/boxes`、`/api/me/boxes/{id}` | PRD |
 | `GET` | `/api/me/questions?status=a,b&q=` | PRD。前端需要响应里附带全部状态的 `counts` |
 | `GET`、`PATCH` | `/api/me/questions/{id}` | PRD。`GET` 返回 `{ question, answer, generations }` |
@@ -101,14 +108,14 @@ e2e/              Playwright 测试
 | `DELETE` | `/api/me/questions/{id}/ai-drafts/{generationId}` | 前端补充：PRD §8.3 要求草稿可删除 |
 | `POST` | `/api/me/questions/{id}/answers` | PRD |
 | `PATCH` | `/api/me/answers/{id}` | PRD |
-| `POST` | `/api/me/answers/{id}/publish` | PRD。请求体 `{ visibility }`，私密为发送、公开为发布 |
-| `GET` | `/api/boxes/{slug}/answers` | 前端补充：公开回答列表（P1，受开关控制） |
+| `POST` | `/api/me/answers/{id}/publish` | 请求体 `{ visibility, draft_revision }`。私密确认写入查看快照，不是送达。公开还要能力和提问者授权 |
+| `GET` | `/api/boxes/{slug}/answers` | 只在能力接口允许、且提问者同意过的已发布回复 |
 
 后端已经按这张表实现。和字面规格不同的地方写在根 README 的待确认事项里：
 
 1. 错误响应体是 `{ message, fields }`，`fields` 显示在对应输入框下。
 2. 暂停中的箱子仍返回公开资料，并用 `accepting: false` 让页面显示暂停提示。不存在和保留 slug 才返回同样的 404。
-3. 回复 JSON 多一个 `delivery_state`：`draft`、`private_reserved` 或 `published`。旧字段保持不变。
+3. 回复 JSON 包含 `delivery_state`、`confirmed_content`、`confirmed_at`、`seen_at` 和 `draft_revision`。`sent_at` 是确认时间，不是送达时间。
 
 ## Mock 模式
 
@@ -176,7 +183,7 @@ e2e/              Playwright 测试
 
 - **Logo**：仓库里还没有 Logo 文件，按仓库规则不绘制替代品。开屏页底部目前以文字显示产品名。拿到原始文件后放到 `public/brand/`，并设置 `src/components/brand/Brand.tsx` 里的 `BRAND_LOGO_SRC`。Favicon 同样暂缺。
 - **品牌色**：`--accent` 是在没有 Logo 的情况下选定的临时强调色，拿到 Logo 后只需修改 `tokens.css`。
-- **公开回答**：公开页的“公开的回答”受 `src/config/features.ts` 的 `publicAnswers` 控制（PRD P1，待确认）。
+- **公开回答**：由 `GET /api/capabilities` 的 `public_replies_enabled` 决定。默认关闭。
 - **私密回复的送达方式**：提问者如何看到私密回复仍待确认，前端只记录“已私密回复”，不承诺通知提问者。
 - **认证方式**：登录注册界面先按邮箱加密码实现，接口集中在 `ApiClient`，更换认证方式不影响页面结构。
 - **深色模式、多语言**：未实现，令牌结构已为深色模式预留。

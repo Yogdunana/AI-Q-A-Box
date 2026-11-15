@@ -231,8 +231,10 @@ function Timeline({ detail }: { detail: Detail }) {
   generations.forEach((g, i) => events.push({ at: g.created_at, label: `生成 AI 草稿 · 第 ${i + 1} 版` }));
   if (answer) {
     if (answer.published_at) events.push({ at: answer.published_at, label: "公开发布回复" });
-    else if (answer.sent_at) events.push({ at: answer.sent_at, label: "私密回复" });
-    else events.push({ at: answer.updated_at, label: "保存回复草稿" });
+    else if (answer.confirmed_at || answer.sent_at) {
+      events.push({ at: answer.confirmed_at ?? answer.sent_at!, label: answer.confirmed_content ? "确认回复，可在查看链接看到" : "已确认，还没有可查看快照" });
+    } else events.push({ at: answer.updated_at, label: "保存回复草稿" });
+    if (answer.seen_at) events.push({ at: answer.seen_at, label: "提问者已查看" });
   }
   events.sort((a, b) => a.at.localeCompare(b.at));
 

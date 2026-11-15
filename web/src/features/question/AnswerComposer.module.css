@@ -22,6 +22,32 @@
   color: var(--status-reviewing);
 }
 
+.saveError {
+  font-size: var(--text-xs);
+  color: var(--danger);
+}
+
+.privateHint,
+.legacyNote {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0;
+  color: var(--ink-3);
+  font-size: var(--text-xs);
+  line-height: var(--leading-snug);
+}
+
+.privateHint svg,
+.legacyNote {
+  flex: none;
+}
+
+.legacyNote {
+  display: block;
+  margin-top: var(--space-3);
+}
+
 .sourceTag {
   display: inline-flex;
   align-items: center;

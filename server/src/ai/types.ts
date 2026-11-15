@@ -3,6 +3,13 @@ import type { ReplyStyle } from "../constants.ts";
 export interface DraftInput {
   question: string;
   style: ReplyStyle;
+  maxOutputTokens: number;
+}
+
+export interface DraftResult {
+  text: string;
+  inputTokens: number | null;
+  outputTokens: number | null;
 }
 
 export class AiFailure extends Error {
@@ -22,5 +29,5 @@ export class AiAborted extends Error {
 export interface AiProvider {
   readonly provider: string;
   readonly model: string;
-  generate(input: DraftInput, signal: AbortSignal): Promise<string>;
+  generate(input: DraftInput, signal: AbortSignal): Promise<DraftResult>;
 }

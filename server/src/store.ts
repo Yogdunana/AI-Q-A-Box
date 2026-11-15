@@ -1,5 +1,6 @@
 import type { DatabaseSync } from "node:sqlite";
 import {
+  AI_WRITABLE_STATUSES,
   LIST_LIMIT,
   type AnonymousMode,
   type AnswerSource,
@@ -13,7 +14,7 @@ import {
   type ReplyVisibility,
   type RiskLevel,
 } from "./constants.ts";
-import { changed } from "./db.ts";
+import { changed, withTransaction } from "./db.ts";
 
 export interface UserRecord {
   id: string;
@@ -57,6 +58,7 @@ export interface QuestionRecord {
   status: QuestionStatus;
   risk_level: RiskLevel;
   submitted_at: string;
+  public_consent: boolean;
 }
 
 export interface AnswerRecord {
@@ -70,6 +72,10 @@ export interface AnswerRecord {
   published_at: string | null;
   sent_at: string | null;
   published_content: string | null;
+  confirmed_content: string | null;
+  confirmed_at: string | null;
+  seen_at: string | null;
+  draft_revision: number;
 }
 
 export interface GenerationRecord {
@@ -81,6 +87,10 @@ export interface GenerationRecord {
   output: string;
   status: "completed" | "failed";
   created_at: string;
+  input_tokens?: number | null;
+  output_tokens?: number | null;
+  latency_ms?: number | null;
+  error_code?: string | null;
 }
 
 interface BoxRow {
@@ -110,6 +120,7 @@ interface QuestionRow {
   status: QuestionStatus;
   risk_level: RiskLevel;
   submitted_at: string;
+  public_consent: number;
 }
 
 interface AnswerRow {
@@ -123,6 +134,10 @@ interface AnswerRow {
   updated_at: string;
   published_at: string | null;
   sent_at: string | null;
+  confirmed_content: string | null;
+  confirmed_at: string | null;
+  seen_at: string | null;
+  draft_revision: number;
 }
 
 const BOX_COLUMNS = `b.id, b.owner_id, b.slug, b.title, b.description, b.anonymous_mode,
@@ -260,12 +275,13 @@ export function updateBox(db: DatabaseSync, id: string, patch: Partial<BoxRecord
 
 export function insertQuestion(
   db: DatabaseSync,
-  question: QuestionRecord & { idempotencyKey: string; contentHash: string; ipHash: string },
+  question: QuestionRecord & { idempotencyKey: string; contentHash: string; ipHash: string; viewTokenHash: string },
 ): void {
   db.prepare(
     `INSERT INTO questions (
-      id, box_id, content, asker_display_name, is_anonymous, status, risk_level, submitted_at, deleted_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL)`,
+      id, box_id, content, asker_display_name, is_anonymous, status, risk_level, submitted_at, deleted_at,
+      version, public_consent, view_token_hash
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, 0, ?, ?)`,
   ).run(
     question.id,
     question.box_id,
@@ -275,6 +291,8 @@ export function insertQuestion(
     question.status,
     question.risk_level,
     question.submitted_at,
+    question.public_consent ? 1 : 0,
+    question.viewTokenHash,
   );
   db.prepare(
     `INSERT INTO question_idempotency (box_id, idempotency_key, question_id, created_at)
@@ -353,12 +371,21 @@ export function listQuestions(
   return { items: rows.map(mapQuestion), total: Number(totalRow?.n ?? 0), counts };
 }
 
-export function updateQuestionState(db: DatabaseSync, id: string, status: QuestionStatus, risk: RiskLevel): void {
-  db.prepare("UPDATE questions SET status = ?, risk_level = ? WHERE id = ?").run(status, risk, id);
+export function updateQuestionState(db: DatabaseSync, id: string, status: QuestionStatus, risk: RiskLevel): boolean {
+  const result = db
+    .prepare(
+      "UPDATE questions SET status = ?, risk_level = ?, version = version + 1 WHERE id = ? AND status != 'deleted' AND deleted_at IS NULL",
+    )
+    .run(status, risk, id);
+  return changed(result) > 0;
 }
 
 export function markQuestionDeleted(db: DatabaseSync, id: string, at: string): boolean {
-  const result = db.prepare("UPDATE questions SET status = 'deleted', deleted_at = ? WHERE id = ? AND status != 'deleted'").run(at, id);
+  const result = db
+    .prepare(
+      "UPDATE questions SET status = 'deleted', deleted_at = ?, version = version + 1 WHERE id = ? AND status != 'deleted'",
+    )
+    .run(at, id);
   return changed(result) > 0;
 }
 
@@ -368,9 +395,24 @@ export function insertGeneration(
 ): void {
   db.prepare(
     `INSERT INTO ai_generations (
-      id, question_id, owner_id, provider, model, prompt_version, output, status, created_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-  ).run(row.id, row.question_id, row.ownerId, row.provider, row.model, row.prompt_version, row.output, row.status, row.created_at);
+      id, question_id, owner_id, provider, model, prompt_version, output, status, created_at,
+      input_tokens, output_tokens, latency_ms, error_code
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  ).run(
+    row.id,
+    row.question_id,
+    row.ownerId,
+    row.provider,
+    row.model,
+    row.prompt_version,
+    row.output,
+    row.status,
+    row.created_at,
+    row.input_tokens ?? null,
+    row.output_tokens ?? null,
+    row.latency_ms ?? null,
+    row.error_code ?? null,
+  );
 }
 
 export function listGenerations(db: DatabaseSync, questionId: string): GenerationRecord[] {
@@ -426,56 +468,96 @@ export function insertAnswer(
     visibility: ReplyVisibility;
     source: AnswerSource;
     updatedAt: string;
+    revision: number;
   },
 ): void {
   db.prepare(
     `INSERT INTO answers (
-      id, question_id, content, published_content, visibility, source, delivery_state, updated_at, published_at, sent_at
-    ) VALUES (?, ?, ?, NULL, ?, ?, 'draft', ?, NULL, NULL)`,
-  ).run(answer.id, answer.questionId, answer.content, answer.visibility, answer.source, answer.updatedAt);
+      id, question_id, content, published_content, visibility, source, delivery_state, updated_at, published_at, sent_at,
+      confirmed_content, confirmed_at, seen_at, draft_revision
+    ) VALUES (?, ?, ?, NULL, ?, ?, 'draft', ?, NULL, NULL, NULL, NULL, NULL, ?)`,
+  ).run(answer.id, answer.questionId, answer.content, answer.visibility, answer.source, answer.updatedAt, answer.revision);
 }
 
+/**
+ * Applies a draft save only when the client revision is newer than the stored one.
+ * A missing revision increments in place for callers that are not sequencing saves.
+ * Confirmed snapshot columns are intentionally left untouched.
+ */
 export function updateAnswerDraft(
   db: DatabaseSync,
   id: string,
-  patch: { content: string; visibility: ReplyVisibility; source: AnswerSource; updatedAt: string },
-): void {
-  db.prepare("UPDATE answers SET content = ?, visibility = ?, source = ?, updated_at = ? WHERE id = ?").run(
-    patch.content,
-    patch.visibility,
-    patch.source,
-    patch.updatedAt,
-    id,
-  );
+  patch: { content: string; visibility: ReplyVisibility; source: AnswerSource; updatedAt: string; revision: number | null },
+): boolean {
+  if (patch.revision === null) {
+    const result = db
+      .prepare(
+        "UPDATE answers SET content = ?, visibility = ?, source = ?, updated_at = ?, draft_revision = draft_revision + 1 WHERE id = ?",
+      )
+      .run(patch.content, patch.visibility, patch.source, patch.updatedAt, id);
+    return changed(result) > 0;
+  }
+  const result = db
+    .prepare(
+      `UPDATE answers SET content = ?, visibility = ?, source = ?, updated_at = ?, draft_revision = ?
+       WHERE id = ? AND draft_revision < ?`,
+    )
+    .run(patch.content, patch.visibility, patch.source, patch.updatedAt, patch.revision, id, patch.revision);
+  return changed(result) > 0;
 }
 
-export function updateAnswerDelivery(
+/**
+ * Copies the current draft into the asker-visible snapshot. Does not write a
+ * caller-supplied string over a newer draft: the snapshot is the stored content.
+ */
+export function confirmAnswerSnapshot(
   db: DatabaseSync,
   id: string,
   patch: {
-    content: string;
-    publishedContent: string | null;
     visibility: ReplyVisibility;
     deliveryState: DeliveryState;
     updatedAt: string;
     publishedAt: string | null;
     sentAt: string | null;
+    confirmedAt: string;
+    publishSnapshot: boolean;
+    expectedRevision: number | null;
   },
-): void {
-  db.prepare(
-    `UPDATE answers SET
-      content = ?, published_content = ?, visibility = ?, delivery_state = ?, updated_at = ?, published_at = ?, sent_at = ?
-     WHERE id = ?`,
-  ).run(
-    patch.content,
-    patch.publishedContent,
+): boolean {
+  const args: Array<string | number | null> = [
+    patch.publishSnapshot ? 1 : 0,
     patch.visibility,
     patch.deliveryState,
     patch.updatedAt,
     patch.publishedAt,
     patch.sentAt,
+    patch.confirmedAt,
     id,
-  );
+  ];
+  let revisionSql = "";
+  if (patch.expectedRevision !== null) {
+    revisionSql = " AND draft_revision = ?";
+    args.push(patch.expectedRevision);
+  }
+  const result = db
+    .prepare(
+      `UPDATE answers SET
+        published_content = CASE WHEN ? = 1 THEN content ELSE NULL END,
+        visibility = ?,
+        delivery_state = ?,
+        updated_at = ?,
+        published_at = ?,
+        sent_at = ?,
+        confirmed_content = content,
+        confirmed_at = ?,
+        seen_at = CASE
+          WHEN confirmed_content IS NOT NULL AND confirmed_content = content THEN seen_at
+          ELSE NULL
+        END
+       WHERE id = ?${revisionSql}`,
+    )
+    .run(...args);
+  return changed(result) > 0;
 }
 
 export function listPublicAnswers(db: DatabaseSync, slug: string): Array<{ id: string; question: string; answer: string; published_at: string }> {
@@ -490,9 +572,148 @@ export function listPublicAnswers(db: DatabaseSync, slug: string): Array<{ id: s
          AND a.published_at IS NOT NULL
          AND a.published_content IS NOT NULL
          AND q.status = 'published'
+         AND q.public_consent = 1
        ORDER BY a.published_at DESC`,
     )
     .all(slug) as Array<{ id: string; question: string; answer: string; published_at: string }>;
+}
+
+export interface ReplyLinkRecord {
+  id: string;
+  content: string;
+  status: QuestionStatus;
+  submitted_at: string;
+  deleted_at: string | null;
+  box_title: string;
+  owner_display_name: string;
+  confirmed_content: string | null;
+  confirmed_at: string | null;
+}
+
+export function findViewTokenHash(db: DatabaseSync, questionId: string): string | null {
+  const row = db.prepare("SELECT view_token_hash FROM questions WHERE id = ?").get(questionId) as
+    | { view_token_hash: string | null }
+    | undefined;
+  return row?.view_token_hash ?? null;
+}
+
+export function findReplyByTokenHash(db: DatabaseSync, tokenHash: string): ReplyLinkRecord | undefined {
+  return db
+    .prepare(
+      `SELECT q.id, q.content, q.status, q.submitted_at, q.deleted_at,
+              b.title AS box_title, u.display_name AS owner_display_name,
+              a.confirmed_content, a.confirmed_at
+       FROM questions q
+       JOIN question_boxes b ON b.id = q.box_id
+       JOIN users u ON u.id = b.owner_id AND u.deleted_at IS NULL
+       LEFT JOIN answers a ON a.question_id = q.id
+       WHERE q.view_token_hash = ?`,
+    )
+    .get(tokenHash) as ReplyLinkRecord | undefined;
+}
+
+export function markReplySeen(db: DatabaseSync, questionId: string, at: string): boolean {
+  const result = db
+    .prepare(
+      `UPDATE answers SET seen_at = ?
+       WHERE question_id = ? AND seen_at IS NULL AND confirmed_content IS NOT NULL`,
+    )
+    .run(at, questionId);
+  return changed(result) > 0;
+}
+
+export function countBillableGenerations(db: DatabaseSync, ownerId: string, since: string): number {
+  const row = db
+    .prepare(
+      `SELECT COUNT(*) AS n FROM ai_generations
+       WHERE owner_id = ? AND created_at >= ?
+         AND NOT (status = 'failed' AND error_code = 'aborted')`,
+    )
+    .get(ownerId, since) as { n: number | bigint } | undefined;
+  return Number(row?.n ?? 0);
+}
+
+export function pruneInflight(db: DatabaseSync, before: string): void {
+  db.prepare("DELETE FROM ai_inflight WHERE started_at < ?").run(before);
+}
+
+export function acquireInflight(
+  db: DatabaseSync,
+  input: { questionId: string; ownerId: string; startedAt: string; staleBefore: string; ownerLimit: number },
+): "ok" | "busy" | "owner-limit" {
+  let outcome: "ok" | "busy" | "owner-limit" = "ok";
+  withTransaction(db, () => {
+    pruneInflight(db, input.staleBefore);
+    const mine = db.prepare("SELECT COUNT(*) AS n FROM ai_inflight WHERE owner_id = ?").get(input.ownerId) as
+      | { n: number | bigint }
+      | undefined;
+    if (Number(mine?.n ?? 0) >= input.ownerLimit) {
+      outcome = "owner-limit";
+      return;
+    }
+    const existing = db.prepare("SELECT 1 AS ok FROM ai_inflight WHERE question_id = ?").get(input.questionId);
+    if (existing) {
+      outcome = "busy";
+      return;
+    }
+    db.prepare("INSERT INTO ai_inflight (question_id, owner_id, started_at) VALUES (?, ?, ?)").run(
+      input.questionId,
+      input.ownerId,
+      input.startedAt,
+    );
+  });
+  return outcome;
+}
+
+export function releaseInflight(db: DatabaseSync, questionId: string): void {
+  db.prepare("DELETE FROM ai_inflight WHERE question_id = ?").run(questionId);
+}
+
+export type SaveGenerationOutcome =
+  | { ok: true; status: QuestionStatus }
+  | { ok: false; reason: "deleted" | "archived" | "spam" | "closed" };
+
+const WRITABLE = new Set<string>(AI_WRITABLE_STATUSES);
+
+class GenerationConflict extends Error {
+  constructor() {
+    super("generation version conflict");
+    this.name = "GenerationConflict";
+  }
+}
+
+/** Inserts a generation only when the question is still writable. Retries one version race. */
+export function saveGenerationIfWritable(db: DatabaseSync, row: GenerationRecord & { ownerId: string }): SaveGenerationOutcome {
+  const once = (): SaveGenerationOutcome => {
+    const gate = db
+      .prepare("SELECT status, version, deleted_at FROM questions WHERE id = ?")
+      .get(row.question_id) as { status: QuestionStatus; version: number; deleted_at: string | null } | undefined;
+    if (!gate || gate.deleted_at || gate.status === "deleted") return { ok: false, reason: "deleted" };
+    if (gate.status === "archived") return { ok: false, reason: "archived" };
+    if (gate.status === "spam") return { ok: false, reason: "spam" };
+    if (!WRITABLE.has(gate.status)) return { ok: false, reason: "closed" };
+    insertGeneration(db, row);
+    if (gate.status === "submitted" || gate.status === "reviewing") {
+      const result = db
+        .prepare(
+          `UPDATE questions SET status = 'drafted', version = version + 1
+           WHERE id = ? AND status = ? AND version = ? AND deleted_at IS NULL`,
+        )
+        .run(row.question_id, gate.status, gate.version);
+      if (changed(result) === 0) throw new GenerationConflict();
+      return { ok: true, status: "drafted" };
+    }
+    return { ok: true, status: gate.status };
+  };
+
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      return withTransaction(db, once);
+    } catch (error) {
+      if (!(error instanceof GenerationConflict)) throw error;
+    }
+  }
+  return { ok: false, reason: "closed" };
 }
 
 function mapBox(row: BoxRow): BoxRecord {
@@ -527,6 +748,7 @@ function mapQuestion(row: QuestionRow): QuestionRecord {
     status: row.status,
     risk_level: row.risk_level,
     submitted_at: row.submitted_at,
+    public_consent: row.public_consent === 1,
   };
 }
 
@@ -542,5 +764,9 @@ function mapAnswer(row: AnswerRow): AnswerRecord {
     published_at: row.published_at,
     sent_at: row.sent_at,
     published_content: row.published_content,
+    confirmed_content: row.confirmed_content,
+    confirmed_at: row.confirmed_at,
+    seen_at: row.seen_at,
+    draft_revision: Number(row.draft_revision ?? 0),
   };
 }

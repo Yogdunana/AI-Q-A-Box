@@ -8,9 +8,9 @@ import { Button, ButtonLink } from "../../components/ui/Button";
 import { EmptyState, Kbd, Skeleton } from "../../components/ui/Display";
 import { Counter, Field, Input, Textarea } from "../../components/ui/Field";
 import { Switch } from "../../components/ui/Switch";
-import { features } from "../../config/features";
-import { duration, ease, fadeUp, stagger } from "../../lib/motion";
 import { useQuery } from "../../lib/query";
+import { duration, ease, fadeUp, stagger } from "../../lib/motion";
+import { newViewToken, rememberSubmittedToken } from "../../lib/view-token";
 import { NICKNAME_MAX, QUESTION_MAX, validateQuestion } from "../../lib/validation";
 import { BoxIdentity } from "./BoxIdentity";
 import { PublicAnswers } from "./PublicAnswers";
@@ -19,6 +19,7 @@ import styles from "./PublicBoxPage.module.css";
 export function PublicBoxPage() {
   const { slug = "" } = useParams();
   const { data: box, error, loading, refetch } = useQuery(`public:box:${slug}`, () => api.getPublicBox(slug));
+  const { data: capabilities } = useQuery("capabilities", () => api.getCapabilities());
 
   useEffect(() => {
     if (box) document.title = `${box.title} · ${box.owner.display_name} · ${PRODUCT_NAME}`;
@@ -75,7 +76,7 @@ export function PublicBoxPage() {
             <m.div variants={fadeUp} className={styles.composerWrap}>
               {box.accepting ? <Composer box={box} /> : <PausedNotice name={box.owner.display_name} />}
             </m.div>
-            {features.publicAnswers && (
+            {capabilities?.public_replies_enabled && (
               <m.div variants={fadeUp} className={styles.answersBlock}>
                 <PublicAnswers slug={box.slug} ownerName={box.owner.display_name} />
               </m.div>
@@ -110,7 +111,10 @@ function Composer({ box }: { box: PublicBox }) {
   const [formError, setFormError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const idempotencyKey = useRef(newKey());
+  const viewToken = useRef(newViewToken());
   const lastSubmitted = useRef("");
+  const { data: capabilities } = useQuery("capabilities", () => api.getCapabilities());
+  const [allowPublic, setAllowPublic] = useState(false);
 
   const contentError = touched ? validateQuestion(content) : null;
   const canSubmit = !validateQuestion(content) && (anonymous || nickname.trim().length > 0) && !pending;
@@ -125,6 +129,7 @@ function Composer({ box }: { box: PublicBox }) {
     }
     if (content !== lastSubmitted.current) {
       idempotencyKey.current = newKey();
+      viewToken.current = newViewToken();
       lastSubmitted.current = content;
     }
     setPending(true);
@@ -135,9 +140,12 @@ function Composer({ box }: { box: PublicBox }) {
         is_anonymous: anonymous,
         asker_display_name: anonymous ? undefined : nickname.trim(),
         idempotency_key: idempotencyKey.current,
+        view_token: viewToken.current,
+        allow_public: capabilities?.public_replies_enabled ? allowPublic : false,
       });
+      rememberSubmittedToken(box.slug, viewToken.current);
       navigate(`/${box.slug}/submitted`, {
-        state: { question: content.trim(), ownerName: box.owner.display_name },
+        state: { question: content.trim(), ownerName: box.owner.display_name, viewToken: viewToken.current },
       });
     } catch (error) {
       if (isApiError(error) && error.fields.asker_display_name) setNicknameError(error.fields.asker_display_name);
@@ -215,7 +223,19 @@ function Composer({ box }: { box: PublicBox }) {
               setNicknameError(null);
             }}
             label="匿名提问"
-            description={anonymous ? "箱主不会看到你的称呼。" : "箱主会看到你留下的称呼。"}
+            description={
+              anonymous
+                ? "箱主看不到你的称呼。平台仍会保留防滥用所需的最少技术记录。"
+                : "箱主会看到你留下的称呼。平台仍会保留防滥用所需的最少技术记录。"
+            }
+          />
+        )}
+        {capabilities?.public_replies_enabled && (
+          <Switch
+            checked={allowPublic}
+            onChange={setAllowPublic}
+            label="允许公开"
+            description="勾选后，箱主可以把这条问题和回复发到公开页。不勾选时，回复只出现在你的查看链接里。"
           />
         )}
         <AnimatePresence initial={false}>
@@ -278,7 +298,9 @@ function Composer({ box }: { box: PublicBox }) {
         <p className={styles.privacy}>
           <Lock aria-hidden="true" />
           <span>
-            只有 {box.owner.display_name} 能看到你的问题。{anonymous ? "匿名指对箱主隐藏身份，平台仍会保留防滥用所需的最少技术记录。" : ""}
+            问题进入 {box.owner.display_name} 的收件箱。提交后请保存查看链接，用来查看已经确认的回复。链接丢失后无法补发，也不会用邮件或短信通知你。
+            {anonymous ? "匿名只对箱主隐藏称呼。" : "箱主会看到你留下的称呼。"}
+            平台仍会保留防滥用所需的最少技术记录。
           </span>
         </p>
         <Button

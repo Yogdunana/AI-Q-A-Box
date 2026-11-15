@@ -13,7 +13,10 @@ test.describe("core flow", () => {
     await page.goto("/lin");
     await page.getByLabel("你的问题").fill(question);
     await page.getByRole("button", { name: /发送问题/ }).click();
-    await expect(page.getByRole("heading", { name: "问题已送达" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "问题已提交" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "保存查看链接" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "查看回复" })).toBeVisible();
+    await expect(page.getByText("丢失后无法找回")).toBeVisible();
     await expect(page.getByText(question)).toBeVisible();
 
     await signInWithDemo(page);
@@ -28,6 +31,18 @@ test.describe("core flow", () => {
     await expect(footer.getByText("Ask “Me”")).toBeVisible();
     await expect(page.locator("body")).not.toContainText(/AI\s*帮箱主回复|AI\s*代回复|让\s*AI\s*替你回答/);
   });
+});
+
+test("the reply page stays usable with reduced motion and the keyboard", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.setViewportSize({ width: 375, height: 700 });
+  await page.goto("/reply");
+  await expect(page.getByRole("heading", { name: "没有查看链接" })).toBeVisible();
+  await page.keyboard.press("Tab");
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+  );
+  expect(overflow).toBeLessThanOrEqual(0);
 });
 
 test.describe("owner navigation", () => {
@@ -47,7 +62,7 @@ test.describe("owner navigation", () => {
 });
 
 const WIDTHS = [320, 375, 768, 1024, 1440];
-const PAGES = ["/", "/lin", "/auth/login", "/app", "/app/inbox", "/app/share", "/app/settings"];
+const PAGES = ["/", "/lin", "/reply", "/auth/login", "/app", "/app/inbox", "/app/share", "/app/settings"];
 
 test.describe("responsive layout", () => {
   test.skip(({ isMobile }) => isMobile, "widths are set explicitly");

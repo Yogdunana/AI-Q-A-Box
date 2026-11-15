@@ -14,8 +14,8 @@ import styles from "./SharePage.module.css";
 
 const TEMPLATES = [
   { id: "bio", label: "个人简介", text: (url: string) => `有问题想问我？来这里：${url}` },
-  { id: "post", label: "动态 / 帖子", text: (url: string) => `开了一个提问箱，什么都可以问，也可以匿名。我会认真挑着回答：${url}` },
-  { id: "group", label: "群聊", text: (url: string) => `大家有想问我的，可以匿名丢到这里：${url}` },
+  { id: "post", label: "动态 / 帖子", text: (url: string) => `开了一个提问箱，什么都可以问，也可以不留下称呼。我会认真挑着回答：${url}` },
+  { id: "group", label: "群聊", text: (url: string) => `大家有想问我的，可以不留下称呼，丢到这里：${url}` },
 ];
 
 export function SharePage() {

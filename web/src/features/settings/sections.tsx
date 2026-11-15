@@ -11,13 +11,14 @@ import {
   type ReplyLength,
   type ReplyStyle,
   type ReplyTone,
+  type ReplyVisibility,
 } from "../../api";
 import { Card } from "../../components/layout/Page";
 import { Button } from "../../components/ui/Button";
 import { ConfirmDialog } from "../../components/ui/Dialog";
 import { Field, Input, Textarea } from "../../components/ui/Field";
 import { SegmentedControl, Switch } from "../../components/ui/Switch";
-import { clearQueries } from "../../lib/query";
+import { clearQueries, useQuery } from "../../lib/query";
 import {
   DESCRIPTION_MAX,
   DISPLAY_NAME_MAX,
@@ -179,26 +180,52 @@ export function BoxSection() {
           checked={form.anonymous_mode === "allowed"}
           onChange={(on) => set("anonymous_mode", on ? "allowed" : "disabled")}
           label="允许匿名提问"
-          description="关闭后，每位提问者都需要留下称呼。"
+          description="关闭后，每位提问者都需要留下称呼。匿名只对箱主隐藏称呼，平台仍保留防滥用所需的最少记录。"
         />
         <div className={styles.divider} />
-        <div className={styles.row2}>
-          <div>
-            <p className={styles.rowLabel}>默认回复方式</p>
-            <p className={styles.rowHint}>每次确认回复时仍可单独调整。</p>
-          </div>
-          <SegmentedControl
-            label="默认回复方式"
-            value={form.default_reply_visibility}
-            onChange={(v) => set("default_reply_visibility", v)}
-            options={[
-              { value: "private", label: "私密", icon: <Lock /> },
-              { value: "public", label: "公开", icon: <Globe /> },
-            ]}
-          />
-        </div>
+        <PublicReplySetting
+          value={form.default_reply_visibility}
+          onChange={(value) => set("default_reply_visibility", value)}
+        />
       </Card>
     </SettingsFrame>
+  );
+}
+
+function PublicReplySetting({
+  value,
+  onChange,
+}: {
+  value: ReplyVisibility;
+  onChange(value: ReplyVisibility): void;
+}) {
+  const { data } = useQuery("capabilities", () => api.getCapabilities());
+  if (!data?.public_replies_enabled) {
+    return (
+      <div>
+        <p className={styles.rowLabel}>回复方式</p>
+        <p className={styles.rowHint}>
+          公开发布目前关闭。确认后的回复只通过提问者的查看链接可见。以后如果开放公开，也必须由提问者在提交时明确同意，不能只靠箱主确认。
+        </p>
+      </div>
+    );
+  }
+  return (
+    <div className={styles.row2}>
+      <div>
+        <p className={styles.rowLabel}>默认回复方式</p>
+        <p className={styles.rowHint}>公开需要提问者在提交时明确同意。没有同意的问题不能公开。</p>
+      </div>
+      <SegmentedControl
+        label="默认回复方式"
+        value={value}
+        onChange={onChange}
+        options={[
+          { value: "private", label: "私密", icon: <Lock /> },
+          { value: "public", label: "公开", icon: <Globe /> },
+        ]}
+      />
+    </div>
   );
 }
 
@@ -260,7 +287,7 @@ export function StyleSection() {
         <Field
           label="关于你"
           optional
-          hint="写下你的身份、经历和说话习惯。AI 只会参考这里的内容，不会编造你没写过的事。"
+          hint="写下你的身份、经历和说话习惯。生成草稿时会参考这些内容和当前问题。模型仍可能说错，发出前需要你自己确认。"
           error={errors.notes}
           counter={{ value: form.notes.length, max: STYLE_NOTES_MAX }}
         >

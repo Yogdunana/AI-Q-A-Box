@@ -1,6 +1,7 @@
 import { createBrowserRouter } from "react-router";
 import { LandingPage } from "../features/landing/LandingPage";
 import { PublicBoxPage } from "../features/public-box/PublicBoxPage";
+import { ReplyPage } from "../features/public-box/ReplyPage";
 import { SubmittedPage } from "../features/public-box/SubmittedPage";
 import { NotFoundPage, RouteErrorPage } from "../features/system/NotFoundPage";
 import { FullPageLoader, GuestOnly, OwnerLayout, RequireAuth, SetupGate } from "./guards";
@@ -87,6 +88,7 @@ export const router = createBrowserRouter([
           },
         ],
       },
+      { path: "reply", element: <ReplyPage /> },
       { path: ":slug", element: <PublicBoxPage /> },
       { path: ":slug/submitted", element: <SubmittedPage /> },
       { path: "*", element: <NotFoundPage /> },

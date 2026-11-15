@@ -33,6 +33,7 @@ export const RESERVED_SLUGS = new Set([
   "public",
   "www",
   "submitted",
+  "reply",
 ]);
 
 const SLUG_PATTERN = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/;

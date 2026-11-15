@@ -3,6 +3,7 @@ import { buildApp } from "./app.ts";
 import { loadConfig } from "./config.ts";
 import { openDatabase } from "./db.ts";
 import { migrate } from "./migrate.ts";
+import { pruneInflight } from "./store.ts";
 
 const config = loadConfig(process.env);
 const db = openDatabase(config.databasePath);
@@ -11,6 +12,8 @@ db.prepare("DELETE FROM rate_hits WHERE at_ms < ?").run(Date.now() - 24 * 60 * 6
 db.prepare("DELETE FROM submission_guards WHERE created_at < ?").run(
   new Date(Date.now() - config.guardRetentionMs).toISOString(),
 );
+
+pruneInflight(db, new Date(Date.now() - config.aiTimeoutMs - 15_000).toISOString());
 
 const app = buildApp({ db, config, ai: createAiProvider(config) });
 

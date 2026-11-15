@@ -1,4 +1,4 @@
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, FastifyServerOptions } from "fastify";
 import { createMockProvider, type AiProvider } from "../src/ai/index.ts";
 import { buildApp, type BuildOptions } from "../src/app.ts";
 import { loadConfig, type Config } from "../src/config.ts";
@@ -34,6 +34,7 @@ export async function createTestApp(options: {
   config?: Partial<Config>;
   ai?: AiProvider;
   extraRoutes?: BuildOptions["extraRoutes"];
+  logger?: FastifyServerOptions["logger"];
 } = {}): Promise<TestApp> {
   const db = openDatabase(":memory:");
   migrate(db);
@@ -44,6 +45,7 @@ export async function createTestApp(options: {
     now: options.now,
     ai: options.ai ?? createMockProvider(),
     extraRoutes: options.extraRoutes,
+    logger: options.logger,
   });
   await app.ready();
   return { app, db, config };

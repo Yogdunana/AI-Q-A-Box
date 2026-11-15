@@ -35,6 +35,12 @@ export interface Config {
   guardRetentionMs: number;
   bodyLimit: number;
   requestTimeoutMs: number;
+  viewTokenPepper: string;
+  aiMaxOutputTokens: number;
+  aiDailyLimit: number;
+  aiMaxConcurrent: number;
+  replyRateLimit: number;
+  replyRateWindowMs: number;
 }
 
 const DEV_ORIGINS = ["http://localhost:5173", "http://127.0.0.1:5173"];
@@ -83,7 +89,13 @@ export function loadConfig(env: NodeJS.ProcessEnv): Config {
     dedupeWindowMs: clamp(integer(env.DEDUPE_WINDOW_MS, 60_000), 0, 10 * 60 * 1000),
     guardRetentionMs: clamp(integer(env.GUARD_RETENTION_MS, 7 * 24 * 60 * 60 * 1000), 60_000, 90 * 24 * 60 * 60 * 1000),
     bodyLimit: 64 * 1024,
-    requestTimeoutMs: aiTimeoutMs + 5_000,
+    requestTimeoutMs: aiTimeoutMs + 15_000,
+    viewTokenPepper: requiredSecret(env.VIEW_TOKEN_PEPPER?.trim() ? env.VIEW_TOKEN_PEPPER : sessionSecret, "VIEW_TOKEN_PEPPER", nodeEnv),
+    aiMaxOutputTokens: clamp(integer(env.AI_MAX_OUTPUT_TOKENS, 1024), 64, 4096),
+    aiDailyLimit: clamp(integer(env.AI_DAILY_LIMIT, 40), 1, 10_000),
+    aiMaxConcurrent: clamp(integer(env.AI_MAX_CONCURRENT, 2), 1, 20),
+    replyRateLimit: clamp(integer(env.REPLY_RATE_LIMIT, 30), 1, 10_000),
+    replyRateWindowMs: clamp(integer(env.REPLY_RATE_WINDOW_MS, 60_000), 1_000, 24 * 60 * 60 * 1000),
   };
 }
 

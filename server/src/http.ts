@@ -37,3 +37,23 @@ export function queryString(request: FastifyRequest, name: string): string {
 export function noContent(reply: FastifyReply): FastifyReply {
   return reply.code(204).send();
 }
+
+/**
+ * Aborts only when the response connection closes before a response is finished.
+ * Request "close" also fires after a normal body read, so it is not used here.
+ */
+export function abortWhenClientLeaves(request: FastifyRequest, reply: FastifyReply): { signal: AbortSignal; stop(): void } {
+  const controller = new AbortController();
+  const onClose = () => {
+    if (reply.raw.writableFinished || reply.sent) return;
+    controller.abort();
+  };
+  reply.raw.on("close", onClose);
+  if (request.raw.aborted) controller.abort();
+  return {
+    signal: controller.signal,
+    stop() {
+      reply.raw.removeListener("close", onClose);
+    },
+  };
+}

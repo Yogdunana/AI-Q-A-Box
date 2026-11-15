@@ -15,7 +15,7 @@
 
 域名已经解析到这台主机。HTTP 会跳转到 HTTPS。证书颁给 `ai-box.yogdunana.cn`，本次有效期到 2027-02-12 22:22（Asia/Shanghai）。续期任务是 `certbot.timer`。
 
-站点目录由前端发布工作流替换，见下一节。以后有后端时再改 Nginx 反代，仍然使用同一台机器和同一个域名。不要另找服务器，也不要把 CI 改到这台机器上。
+站点目录由前端发布工作流替换，见下一节。API 跑在同一台机器的 `127.0.0.1:8787`，由 Nginx 把 `/api/` 反代过去。不要把这个端口暴露到公网，也不要把 CI 改到这台机器上。示例配置在 [`deploy/nginx/ai-box.conf`](../deploy/nginx/ai-box.conf)，进程示例在 [`deploy/askme.service`](../deploy/askme.service)。仓库不会替所有者执行这些变更。
 
 ## 前端发布
 
@@ -25,16 +25,31 @@
 2. 用 Actions secret `DEPLOY_SSH_KEY` 登录服务器。主机公钥写死在工作流里（ED25519，`SHA256:oteKPYqz0SpeGeEE/6GHQ4EDIn1u3faBSrr7ihheoVw`），指纹对不上会直接失败。
 3. 把构建产物解压到 `/var/www/ai-box.next`，再整体替换 `/var/www/ai-box`。上一版保留在 `/var/www/ai-box.prev`，`.release` 文件记录版本号。
 4. 检查 `/`、`/lin`、`/app` 都返回应用页面，并能下载入口脚本。
+5. 检查 `/api/health` 返回 JSON `{"ok":true}`。如果不是，工作流会把站点目录切回上一版并失败。
 
-前端是单页应用，Nginx 需要把未知路径回落到 `index.html`。当前配置已经这样处理。
+前端是单页应用。未知页面路径回落到 `index.html`。`/api/` 必须先反代到 `127.0.0.1:8787`，不能落入这段回退。生产构建使用 `VITE_APP_INTENT=production` 和 `VITE_API_MODE=http`。
 
-回滚：所有者登录服务器后执行
+发布前，所有者需要：
+
+1. 准备 `/etc/askme.env`，不要提交。至少包括 32 位以上的 `SESSION_SECRET`、`NODE_ENV=production`、`HOST=127.0.0.1`、`COOKIE_SECURE=true`、`TRUST_PROXY=true`、`WEB_ORIGINS=https://ai-box.yogdunana.cn`、`PUBLIC_REPLIES_ENABLED=false`。
+2. 在服务器上放置后端并执行 `npm run migrate`。`002_reply_access.sql` 只增加列和表。旧的 `private_reserved` 记录不会变成已读，也没有可查看快照。
+3. 用 [`deploy/askme.service`](../deploy/askme.service) 启动 API，并按 [`deploy/nginx/ai-box.conf`](../deploy/nginx/ai-box.conf) 增加 `/api/` 反代。不要把数据库或密钥放进 `/var/www/ai-box`。
+
+健康检查：
+
+```bash
+curl -fsS -D - https://ai-box.yogdunana.cn/api/health
+```
+
+`Content-Type` 必须包含 `application/json`。
+
+回滚静态文件：
 
 ```bash
 mv /var/www/ai-box /var/www/ai-box.bad && mv /var/www/ai-box.prev /var/www/ai-box
 ```
 
-`server/` 里已经有 API，但还没有部署到这台机器。线上前端仍是演示模式，数据只保存在访问者自己的浏览器里。接入时再改 Nginx，把 `/api` 反代到本机后端进程。不要把数据库文件或密钥放进这个静态站点目录，也不要让前端发布工作流去发布它们。
+回滚 API 时停掉新进程并启动上一版。`002` 增加的列有默认值，旧进程可以继续读原来的列。不要为了回滚删除数据库。只有在需要退回纯静态站点时，才去掉 `/api/` 反代并恢复原来的 Nginx 备份。
 
 登录凭据由所有者保管。不要把 root 密码、SSH 私钥或 `/etc/letsencrypt` 里的私钥写入仓库、Pull Request、文档或命令输出。
 

@@ -13,7 +13,7 @@ export const STATUS_META: Record<QuestionStatus, { label: string; tone: StatusTo
   submitted: { label: "新问题", tone: "new" },
   reviewing: { label: "处理中", tone: "reviewing" },
   drafted: { label: "有草稿", tone: "drafted" },
-  answered_private: { label: "已私密回复", tone: "answered" },
+  answered_private: { label: "已确认", tone: "answered" },
   published: { label: "已公开", tone: "published" },
   archived: { label: "已归档", tone: "muted" },
   spam: { label: "垃圾", tone: "muted" },
@@ -65,7 +65,7 @@ export const INBOX_VIEWS: InboxViewMeta[] = [
     label: "已回复",
     statuses: ["answered_private", "published"],
     emptyTitle: "还没有回复过问题",
-    emptyBody: "确认发出的回复会归档在这里。",
+    emptyBody: "确认后的回复会出现在这里。提问者要用查看链接才能看到。",
   },
   {
     id: "archived",
@@ -102,7 +102,7 @@ export function countFor(view: InboxViewMeta, counts: StatusCounts): number {
  */
 export function restoredStatus(answer: Answer | null, hasDraft: boolean): QuestionStatus {
   if (answer?.published_at) return "published";
-  if (answer?.sent_at) return "answered_private";
+  if (answer?.confirmed_at || answer?.sent_at) return "answered_private";
   if (answer || hasDraft) return "drafted";
   return "reviewing";
 }

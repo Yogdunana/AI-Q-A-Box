@@ -23,6 +23,7 @@ import {
   STYLE_NOTES_MAX,
   TITLE_MAX,
   TONES,
+  VIEW_TOKEN_PATTERN,
   VISIBILITIES,
   type AnonymousMode,
   type AnswerSource,
@@ -35,7 +36,7 @@ import {
   type ReplyTone,
   type ReplyVisibility,
 } from "./constants.ts";
-import { badRequest, validation } from "./errors.ts";
+import { badRequest, notFound, validation } from "./errors.ts";
 
 const SLUG_PATTERN = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -66,12 +67,20 @@ export interface SubmitInput {
   is_anonymous: boolean;
   asker_display_name: string;
   idempotency_key: string;
+  view_token: string;
+  allow_public: boolean;
 }
 
 export interface AnswerWrite {
   content?: string;
   visibility?: ReplyVisibility;
   source?: AnswerSource;
+  draft_revision: number | null;
+}
+
+export interface PublishInput {
+  visibility: ReplyVisibility;
+  draft_revision: number | null;
 }
 
 export function readObject(body: unknown): Record<string, unknown> {
@@ -185,13 +194,30 @@ export function parseSubmit(body: unknown): SubmitInput {
   if (typeof anonymous !== "boolean") fields.is_anonymous = "请选择是否匿名。";
   const nickname = cleanLine(readOptionalString(record, "asker_display_name") ?? "");
   if (nickname.length > NICKNAME_MAX) fields.asker_display_name = `称呼最多 ${NICKNAME_MAX} 个字符。`;
+  const viewToken = readOptionalString(record, "view_token") ?? "";
+  if (!VIEW_TOKEN_PATTERN.test(viewToken)) fields.view_token = "请重新提交一次。";
+  let allowPublic = false;
+  if (record.allow_public !== undefined) {
+    if (typeof record.allow_public !== "boolean") fields.allow_public = "请选择是否允许公开。";
+    else allowPublic = record.allow_public;
+  }
   if (Object.keys(fields).length > 0) throw validation(fields);
   return {
     content,
     is_anonymous: anonymous === true,
     asker_display_name: nickname,
     idempotency_key: key,
+    view_token: viewToken,
+    allow_public: allowPublic,
   };
+}
+
+/** The raw token is only accepted here so it can be hashed. A bad shape is not found. */
+export function parseReplyToken(body: unknown): string {
+  const record = readObject(body);
+  const token = readOptionalString(record, "token") ?? "";
+  if (!VIEW_TOKEN_PATTERN.test(token)) throw notFound("这个查看链接无效。");
+  return token;
 }
 
 export function nicknameRequired(): ReturnType<typeof validation> {
@@ -222,7 +248,7 @@ export function parseListQuery(status: string, q: string): { statuses: QuestionS
 export function parseAnswer(body: unknown, mode: "create" | "patch"): AnswerWrite {
   const record = readObject(body);
   const fields: Record<string, string> = {};
-  const result: AnswerWrite = {};
+  const result: AnswerWrite = { draft_revision: readRevision(record) };
   if (mode === "create" || record.content !== undefined) {
     const content = readOptionalString(record, "content");
     if (content === undefined) fields.content = "回复内容不能为空。";
@@ -239,15 +265,16 @@ export function parseAnswer(body: unknown, mode: "create" | "patch"): AnswerWrit
   if (source.error) fields.source = source.error;
   else if (source.value) result.source = source.value;
   if (Object.keys(fields).length > 0) throw validation(fields);
-  if (mode === "patch" && Object.keys(result).length === 0) throw badRequest();
+  const hasWrite = result.content !== undefined || result.visibility !== undefined || result.source !== undefined;
+  if (mode === "patch" && !hasWrite) throw badRequest();
   return result;
 }
 
-export function parsePublish(body: unknown): ReplyVisibility {
+export function parsePublish(body: unknown): PublishInput {
   const record = readObject(body);
   const visibility = readEnum(record, "visibility", VISIBILITIES, true);
   if (visibility.error || !visibility.value) throw validation({ visibility: visibility.error ?? "请选择回复方式。" });
-  return visibility.value;
+  return { visibility: visibility.value, draft_revision: readRevision(record) };
 }
 
 export function slugProblem(slug: string): string | null {
@@ -316,6 +343,15 @@ function answerProblem(content: string): string | null {
   if (!trimmed) return "回复内容不能为空。";
   if (content.length > ANSWER_MAX) return `回复最多 ${ANSWER_MAX} 字。`;
   return null;
+}
+
+function readRevision(record: Record<string, unknown>): number | null {
+  if (record.draft_revision === undefined) return null;
+  const value = record.draft_revision;
+  if (typeof value !== "number" || !Number.isInteger(value) || value < 1 || value > 1_000_000_000) {
+    throw validation({ draft_revision: "草稿版本不正确。" });
+  }
+  return value;
 }
 
 function idempotencyProblem(key: string): string | null {

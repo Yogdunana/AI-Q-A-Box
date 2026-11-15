@@ -1,13 +1,13 @@
 import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router";
 import { m } from "motion/react";
-import { ArrowRight, Globe, Lock } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { api, isApiError, messageFor, type AnonymousMode, type ReplyVisibility } from "../../api";
 import { DEFAULT_REPLY_STYLE } from "../../api/defaults";
 import { BrandName } from "../../components/brand/Brand";
 import { Button } from "../../components/ui/Button";
 import { Field, Input, Textarea } from "../../components/ui/Field";
-import { SegmentedControl, Switch } from "../../components/ui/Switch";
+import { Switch } from "../../components/ui/Switch";
 import { fadeUp, stagger } from "../../lib/motion";
 import { DESCRIPTION_MAX, normalizeSlug, TITLE_MAX, validateRequired, validateSlug } from "../../lib/validation";
 import { useSession } from "../../state/session";
@@ -27,7 +27,7 @@ export function SetupPage() {
   const [title, setTitle] = useState("问我任何事");
   const [description, setDescription] = useState("");
   const [anonymous, setAnonymous] = useState<AnonymousMode>("allowed");
-  const [visibility, setVisibility] = useState<ReplyVisibility>("private");
+  const visibility: ReplyVisibility = "private";
   const [errors, setErrors] = useState<Record<string, string | null>>({});
   const [submitted, setSubmitted] = useState(false);
   const [pending, setPending] = useState(false);
@@ -138,23 +138,16 @@ export function SetupPage() {
               checked={anonymous === "allowed"}
               onChange={(on) => setAnonymous(on ? "allowed" : "disabled")}
               label="允许匿名提问"
-              description="开启后，提问者可以不留称呼。关闭则要求每位提问者留下称呼。"
+              description="开启后，提问者可以不向箱主留下称呼。平台仍会保留防滥用所需的最少记录。"
             />
             <div className={styles.divider} />
             <div className={styles.option}>
               <div>
-                <p className={styles.optionLabel}>默认回复方式</p>
-                <p className={styles.optionHint}>每次确认回复时都可以单独调整。</p>
+                <p className={styles.optionLabel}>回复方式</p>
+                <p className={styles.optionHint}>
+                  确认后的回复通过提问者的查看链接可见。公开发布目前关闭，也不能代替提问者的同意。
+                </p>
               </div>
-              <SegmentedControl
-                label="默认回复方式"
-                value={visibility}
-                onChange={setVisibility}
-                options={[
-                  { value: "private", label: "私密", icon: <Lock /> },
-                  { value: "public", label: "公开", icon: <Globe /> },
-                ]}
-              />
             </div>
           </m.div>
 

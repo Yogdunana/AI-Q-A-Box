@@ -11,6 +11,11 @@ const answer = (patch: Partial<Answer>): Answer => ({
   updated_at: "2026-01-01T00:00:00Z",
   published_at: null,
   sent_at: null,
+  delivery_state: "draft",
+  confirmed_content: null,
+  confirmed_at: null,
+  seen_at: null,
+  draft_revision: 1,
   ...patch,
 });
 
